@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial Médico de Pacientes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .carousel-slider {
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        .carousel-item {
+            scroll-snap-align: start;
+        }
+    @keyframes slide { 0% { margin-left: -33%; } 100% { margin-left: 100%; } }
+        .load-slide { animation: slide 1.1s linear infinite; }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <div id="loading-bar" class="fixed inset-0 z-[80] hidden bg-slate-900/30 backdrop-blur-[2px] flex items-center justify-center cursor-wait">
+        <div class="flex flex-col items-center gap-3 px-8 py-6 rounded-3xl bg-white/80 backdrop-blur-md shadow-2xl border border-white/60">
+            <div class="relative w-20 h-20">
+                <div class="absolute inset-0 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fa-solid fa-user-doctor text-indigo-700 text-2xl"></i>
+                </div>
+            </div>
+            <span id="loading-text" class="text-sm font-semibold text-slate-700">Cargando…</span>
+        </div>
+    </div>
+
+    <!-- HEADER / TOP NAV -->
+    <header class="bg-indigo-700 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button id="back-nav-btn" onclick="navigateBack()" class="hidden p-2 rounded-lg hover:bg-indigo-600 transition active:scale-95" title="Volver">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </button>
+                <div class="flex items-center gap-2 cursor-pointer" onclick="navigateToHome()">
+                    <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center font-bold border border-white/20">
+                        <i class="fa-solid fa-user-doctor text-indigo-200"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base leading-none tracking-tight">MedHistorial</h1>
+                        <p id="connection-status" class="text-[10px] text-indigo-200 font-medium">Modo Local (Sin Supabase)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="openConfigModal()" class="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-800 hover:bg-indigo-600 transition flex items-center gap-1.5" title="Configurar Supabase">
+                    <i class="fa-solid fa-gear"></i> <span class="hidden sm:inline">Conexión</span>
+                </button>
+                <div class="hidden sm:flex items-center gap-2">
+                    <button onclick="navigateToHome()" class="px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-indigo-600 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-house"></i> Inicio
+                    </button>
+                    <button onclick="openQuickPatientsModal()" class="px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-indigo-600 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-users"></i> Pacientes
+                    </button>
+                    <button onclick="navigateToTrash()" class="px-3 py-1.5 text-xs font-semibold rounded-lg hover:bg-indigo-600 transition flex items-center gap-1.5 relative">
+                        <i class="fa-solid fa-trash-can"></i> Papelera
+                        <span id="trash-badge-desktop" class="hidden px-1.5 py-0.5 text-[10px] bg-rose-500 text-white font-bold rounded-full">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- BANNER DE ALERTA DE CONFIGURACIÓN DE SUPABASE -->
+    <div id="supabase-config-warning" class="hidden bg-amber-500 text-slate-900 px-4 py-2 text-xs font-semibold text-center flex items-center justify-center gap-2 shadow-inner">
+        <i class="fa-solid fa-triangle-exclamation text-slate-900"></i>
+        <span>Supabase no está configurado. La app funciona en modo local hasta que ingreses tus llaves.</span>
+        <button onclick="openConfigModal()" class="underline font-bold hover:text-white ml-2">Configurar Nube</button>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 pb-24 sm:pb-8">
+        
+        <!-- VISTA 1: INICIO / LISTA GENERAL DE PACIENTES -->
+        <section id="view-patients" class="space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="patient-search" oninput="renderPatients()" placeholder="Buscar paciente por nombre o RUT/DNI..." 
+                        class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <button onclick="openPatientModal()" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Nuevo Paciente</span>
+                </button>
+            </div>
+
+            <div id="patients-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <!-- VISTA 2: DETALLE DEL PACIENTE (DIAGNÓSTICOS / SECCIONES) -->
+        <section id="view-patient-detail" class="hidden space-y-4">
+            <div id="patient-header-card" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 relative overflow-hidden">
+                <!-- Datos cargados dinámicamente -->
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/80 p-4 rounded-2xl border border-indigo-100 shadow-sm">
+                <button onclick="openRecordModalDirectly()" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 active:scale-95 text-sm">
+                    <i class="fa-solid fa-circle-plus text-lg"></i>
+                    <span>+ Agregar Receta o Examen</span>
+                </button>
+                <button onclick="openDiseaseModal()" class="w-full py-3 px-4 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-xl border border-slate-300 shadow-sm transition flex items-center justify-center gap-2 active:scale-95 text-sm">
+                    <i class="fa-solid fa-folder-plus text-indigo-600"></i>
+                    <span>+ Nueva Sección o Diagnóstico</span>
+                </button>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Enfermedades y Diagnósticos</h2>
+                    <p class="text-xs text-slate-500">Seleccione una sección para revisar sus exámenes y recetas</p>
+                </div>
+
+                <div class="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm text-xs font-semibold text-slate-700">
+                    <i class="fa-solid fa-arrow-down-wide-short text-indigo-600 ml-2"></i>
+                    <select id="disease-sort-order" onchange="setDiseaseSortOrder(this.value)" class="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none pr-1 cursor-pointer">
+                        <option value="date-desc" selected>Más recientes primero</option>
+                        <option value="date-asc">Más antiguos primero</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="diseases-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Diagnósticos dinámicos -->
+            </div>
+        </section>
+
+        <!-- VISTA 3: DETALLE DE ENFERMEDAD (RECETAS Y EXÁMENES) -->
+        <section id="view-disease-detail" class="hidden space-y-4">
+            <div id="disease-header-card" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <!-- Contenido dinámico -->
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl">
+                        <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-800 shadow-sm transition">Todos</button>
+                        <button onclick="setFilter('exam')" id="filter-exam" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition">Exámenes</button>
+                        <button onclick="setFilter('prescription')" id="filter-prescription" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition">Recetas</button>
+                    </div>
+
+                    <div class="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm text-xs font-semibold text-slate-700">
+                        <i class="fa-solid fa-arrow-down-wide-short text-indigo-600 ml-2"></i>
+                        <select id="record-sort-order" onchange="setSortOrder(this.value)" class="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none pr-1 cursor-pointer">
+                            <option value="date-desc" selected>Más recientes primero</option>
+                            <option value="date-asc">Más antiguos primero</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button onclick="openRecordModal(null)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Adjuntar en esta Sección
+                </button>
+            </div>
+
+            <div id="records-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Registros dinámicos -->
+            </div>
+        </section>
+
+        <!-- VISTA 4: PAPELERA DE RECICLAJE -->
+        <section id="view-trash" class="hidden space-y-4">
+            <div class="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-trash-can text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-slate-900 text-base">Papelera de Reciclaje</h2>
+                        <p class="text-xs text-slate-500">Elementos eliminados recientemente</p>
+                    </div>
+                </div>
+                <button onclick="emptyTrash()" id="empty-trash-btn" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow transition">
+                    Vaciar Papelera
+                </button>
+            </div>
+
+            <div id="trash-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Elementos borrados dinámicos -->
+            </div>
+        </section>
+    </main>
+
+    <!-- NAVEGACIÓN INFERIOR MÓVIL -->
+    <nav class="sm:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-30 py-2 px-6 flex justify-around items-center shadow-lg">
+        <button onclick="navigateToHome()" id="bnav-home" class="flex flex-col items-center gap-0.5 text-indigo-600">
+            <i class="fa-solid fa-house text-lg"></i>
+            <span class="text-[10px] font-medium">Inicio</span>
+        </button>
+        <button onclick="openQuickPatientsModal()" id="bnav-patients" class="flex flex-col items-center gap-0.5 text-slate-500 hover:text-indigo-600">
+            <i class="fa-solid fa-address-book text-lg"></i>
+            <span class="text-[10px] font-medium">Pacientes</span>
+        </button>
+        <button onclick="navigateToTrash()" id="bnav-trash" class="flex flex-col items-center gap-0.5 text-slate-500 hover:text-indigo-600 relative">
+            <i class="fa-solid fa-trash-can text-lg"></i>
+            <span class="text-[10px] font-medium">Papelera</span>
+            <span id="trash-badge-mobile" class="hidden absolute -top-1 -right-2 px-1.5 py-0.5 text-[9px] bg-rose-500 text-white font-bold rounded-full">0</span>
+        </button>
+    </nav>
+
+    <!-- FLOATING UNDO NOTIFICATION BANNER -->
+    <div id="undo-banner" class="fixed bottom-16 sm:bottom-6 left-1/2 -translate-x-1/2 z-[70] hidden transition-all duration-300 w-[90%] max-w-md">
+        <div class="bg-slate-900 text-white p-3.5 rounded-2xl shadow-2xl flex items-center justify-between border border-slate-700">
+            <div class="flex items-center gap-2.5 overflow-hidden pr-2">
+                <i class="fa-solid fa-circle-info text-indigo-400 flex-shrink-0"></i>
+                <span id="undo-text" class="text-xs truncate font-medium text-slate-200">Elemento eliminado.</span>
+            </div>
+            <button onclick="triggerUndo()" class="px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs rounded-lg transition flex-shrink-0">
+                Deshacer
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 1: FORMULARIO PACIENTE -->
+    <div id="patient-modal" onclick="handleBackdropClick(event, 'patient-modal')" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <h3 id="patient-modal-title" class="text-lg font-bold text-slate-900 mb-4 flex-shrink-0">Agregar Paciente</h3>
+            <form id="patient-form" onsubmit="handlePatientSubmit(event)" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">
+                <input type="hidden" id="patient-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">NOMBRE COMPLETO *</label>
+                    <input type="text" id="patient-name" required placeholder="Ej. Ana María Torres" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">RUT / DNI (Opcional)</label>
+                        <input type="text" id="patient-dni" placeholder="12.345.678-9" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">EDAD (Opcional)</label>
+                        <input type="number" min="0" max="130" inputmode="numeric" id="patient-age" placeholder="Ej. 42" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">TELÉFONO / CONTACTO</label>
+                    <input type="text" id="patient-phone" placeholder="+56 9 1234 5678" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ALERTAS / OBSERVACIONES</label>
+                    <textarea id="patient-notes" rows="2" placeholder="Alergias, medicamentos crónicos..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('patient-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Guardar Paciente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: FORMULARIO SECCIÓN / DIAGNÓSTICO -->
+    <div id="disease-modal" onclick="handleBackdropClick(event, 'disease-modal')" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <h3 id="disease-modal-title" class="text-lg font-bold text-slate-900 mb-4 flex-shrink-0">Nueva Sección / Diagnóstico</h3>
+            <form id="disease-form" onsubmit="handleDiseaseSubmit(event)" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">
+                <input type="hidden" id="disease-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">TÍTULO O PATOLOGÍA *</label>
+                    <input type="text" id="disease-title" required placeholder="Ej. Diabetes Tipo 2 / Control Cardiológico" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">FECHA DEL DIAGNÓSTICO *</label>
+                        <input type="date" id="disease-date" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">ESTADO DEL DIAGNÓSTICO</label>
+                        <select id="disease-status" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="Activo">Activo / En Tratamiento</option>
+                            <option value="Crónico">Crónico / Monitoreo Continuo</option>
+                            <option value="Resuelto">Resuelto / Concluido</option>
+                            <option value="En Estudio">En Estudio / Evaluación</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">DESCRIPCIÓN GENERAL / OBSERVACIONES</label>
+                    <textarea id="disease-notes" rows="3" placeholder="Detalles de la condición, antecedentes..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('disease-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Guardar Sección</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: RECETA / EXAMEN CON MÚLTIPLES IMÁGENES -->
+    <div id="record-modal" onclick="handleBackdropClick(event, 'record-modal')" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+            <h3 id="record-modal-title" class="text-lg font-bold text-slate-900 mb-4 flex-shrink-0">Adjuntar Examen o Receta</h3>
+            <form id="record-form" onsubmit="handleRecordSubmit(event)" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">
+                <input type="hidden" id="record-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">SECCIÓN O ENFERMEDAD VINCULADA *</label>
+                    <select id="record-disease-id" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">TIPO DE DOCUMENTO</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center justify-center gap-2 border border-slate-300 p-2.5 rounded-xl cursor-pointer hover:bg-slate-50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-600 transition">
+                            <input type="radio" name="record-type" value="exam" checked class="text-indigo-600">
+                            <i class="fa-solid fa-microscope"></i>
+                            <span class="text-xs font-semibold">Examen</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-2 border border-slate-300 p-2.5 rounded-xl cursor-pointer hover:bg-slate-50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-600 transition">
+                            <input type="radio" name="record-type" value="prescription" class="text-indigo-600">
+                            <i class="fa-solid fa-prescription-bottle-medical"></i>
+                            <span class="text-xs font-semibold">Receta</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">TÍTULO O MEDICAMENTO *</label>
+                    <input type="text" id="record-title" required placeholder="Ej. Hemograma Completo o Losartán 50mg" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">FECHA *</label>
+                        <input type="date" id="record-date" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">MÉDICO / LUGAR</label>
+                        <input type="text" id="record-doctor" placeholder="Ej. Dr. Silva" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">IMÁGENES (Permite múltiple selección)</label>
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50 hover:bg-slate-100 transition cursor-pointer relative">
+                        <input type="file" id="record-images" accept="image/*" multiple onchange="handleMultipleImagesUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <i class="fa-solid fa-cloud-arrow-up text-indigo-500 text-2xl mb-1"></i>
+                        <p class="text-xs text-slate-600 font-medium">Seleccionar fotos</p>
+                        <p class="text-[10px] text-slate-400">Puedes agregar varias imágenes a la vez</p>
+                    </div>
+                    
+                    <div id="record-images-preview" class="grid grid-cols-3 gap-2 mt-3">
+                        <!-- Miniaturas subidas -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">NOTAS O DOSIS</label>
+                    <textarea id="record-notes" rows="2" placeholder="Indicaciones de toma o hallazgos..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('record-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Guardar Registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: VISTA RÁPIDA DE PACIENTES -->
+    <div id="quick-patients-modal" onclick="handleBackdropClick(event, 'quick-patients-modal')" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl relative max-h-[80vh] flex flex-col" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-900">Lista Rápida de Pacientes</h3>
+                <button onclick="closeModal('quick-patients-modal')" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+            <div class="relative mb-3">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" id="quick-search" oninput="renderQuickPatientsList()" placeholder="Buscar paciente..." class="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div id="quick-patients-list" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: VISOR DE IMAGEN (LIGHTBOX CON SLIDER / GALERÍA) -->
+    <div id="lightbox-modal" onclick="handleBackdropClick(event, 'lightbox-modal')" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
+            <div class="absolute -top-10 left-0 right-0 flex items-center justify-between text-white text-sm px-2">
+                <span id="lightbox-counter" class="font-medium text-slate-300">1 / 1</span>
+                <button onclick="closeModal('lightbox-modal')" class="hover:text-slate-300 font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-xmark text-lg"></i> Cerrar
+                </button>
+            </div>
+
+            <div class="relative w-full flex items-center justify-center group" id="lightbox-touch-area">
+                <button id="lightbox-prev-btn" onclick="prevLightboxImage()" class="absolute left-2 z-10 w-10 h-10 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center shadow-lg transition opacity-80 hover:opacity-100">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <img id="lightbox-image" src="" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-slate-800 transition-all duration-200">
+
+                <button id="lightbox-next-btn" onclick="nextLightboxImage()" class="absolute right-2 z-10 w-10 h-10 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center shadow-lg transition opacity-80 hover:opacity-100">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: CONFIGURACIÓN DE SUPABASE -->
+    <div id="config-modal" onclick="handleBackdropClick(event, 'config-modal')" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative" onclick="event.stopPropagation()">
+            <h3 class="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-database text-indigo-600"></i> Conexión a Supabase
+            </h3>
+            <p class="text-xs text-slate-500 mb-4">Ingresa las credenciales de tu proyecto de Supabase (Project URL y anon key).</p>
+            <div class="flex flex-wrap gap-2 mb-4 pb-4 border-b border-slate-100">
+                <button type="button" onclick="exportBackup()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"><i class="fa-solid fa-download me-1"></i> Exportar respaldo</button>
+                <button type="button" onclick="document.getElementById('backup-file').click()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"><i class="fa-solid fa-upload me-1"></i> Importar respaldo</button>
+                <input type="file" id="backup-file" accept="application/json,.json" class="hidden" onchange="importBackup(event)">
+            </div>
+            
+            <form onsubmit="saveSupabaseConfig(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">SUPABASE URL</label>
+                    <input type="url" id="cfg-supabase-url" placeholder="https://xyzcompany.supabase.co" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">SUPABASE ANON KEY</label>
+                    <input type="password" id="cfg-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="closeModal('config-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Conectar y Sincronizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // --- GLOBAL APP STATE ---
+        let patients = [];
+        let trash = [];
+
+        let supabaseClient = null;
+        let supabaseUrl = localStorage.getItem('sb_url') || '';
+        let supabaseKey = localStorage.getItem('sb_key') || '';
+
+        let currentPatientId = null;
+        let currentDiseaseId = null;
+        let currentFilter = 'all';
+        let currentSortOrder = 'date-desc';
+        let currentDiseaseSortOrder = 'date-desc';
+        let currentRecordImages = [];
+
+        let currentLightboxImages = [];
+        let currentLightboxIndex = 0;
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        let undoAction = null;
+        let undoTimeout = null;
+
+        // --- HELPERS ---
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const fmtDate = d => { const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : esc(d); };
+        const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[.\-\s]/g, '');
+        const matchPatient = (p, q) => { q = norm(q); return !q || norm(p.name).includes(q) || norm(p.dni).includes(q); };
+        const parseImgs = v => { try { const a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+        const toast = (msg, isError = false) => { setLoading(false); showUndoBanner(msg, null, isError); };
+        const sbOk = res => { if (res && res.error) throw res.error; return res; };
+        window.addEventListener('unhandledrejection', e => { console.error(e.reason); toast('Error: ' + (e.reason?.message || e.reason), true); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeAllModals();
+            const lb = !document.getElementById('lightbox-modal').classList.contains('hidden');
+            if (lb && e.key === 'ArrowRight') nextLightboxImage();
+            if (lb && e.key === 'ArrowLeft') prevLightboxImage();
+        });
+
+        // --- LOCAL STORAGE PERSISTENCE FALLBACK ---
+        function loadLocalData() {
+            try {
+                patients = JSON.parse(localStorage.getItem('med_patients')) || [];
+                trash = JSON.parse(localStorage.getItem('med_trash')) || [];
+            } catch(e) {
+                patients = [];
+                trash = [];
+            }
+
+            if (patients.length === 0 && trash.length === 0) {
+                patients = [
+                    {
+                        id: 'p1',
+                        name: 'Carlos Mendoza Ramos',
+                        dni: '14.520.311-K',
+                        age: '54',
+                        phone: '+56 9 8765 4321',
+                        notes: 'Paciente hipertenso. Sensibilidad a antiinflamatorios.',
+                        diseases: [
+                            {
+                                id: 'd1',
+                                title: 'Hipertensión Arterial Primaria',
+                                date: '2026-01-15',
+                                status: 'Crónico',
+                                notes: 'Controles trimestrales de presión.',
+                                records: [
+                                    {
+                                        id: 'r1',
+                                        type: 'prescription',
+                                        title: 'Losartán 50mg',
+                                        date: '2026-03-10',
+                                        doctor: 'Dr. Roberto Gómez',
+                                        notes: 'Tomar 1 comprimido cada 12 horas en la mañana y noche.',
+                                        images: []
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ];
+                saveLocalData();
+            }
+        }
+
+        function saveLocalData() {
+            try {
+                localStorage.setItem('med_patients', JSON.stringify(patients));
+                localStorage.setItem('med_trash', JSON.stringify(trash));
+            } catch(e) {
+                console.error(e); toast('No se pudo guardar: almacenamiento lleno. Use Supabase o elimine imágenes.', true);
+            }
+            updateBadges();
+            refreshCurrentView();
+        }
+
+        // --- SUPABASE INTEGRATION ---
+        function initSupabase() {
+            const warningEl = document.getElementById('supabase-config-warning');
+            const statusEl = document.getElementById('connection-status');
+            
+            if (supabaseUrl && supabaseKey && window.supabase) {
+                try {
+                    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                    if (warningEl) warningEl.classList.add('hidden');
+                    if (statusEl) statusEl.innerText = "Conectado a Supabase";
+                    loadPatientsFromSupabase();
+                    return;
+                } catch(e) {
+                    console.error("Error al iniciar Supabase:", e);
+                }
+            }
+            
+            if (warningEl) warningEl.classList.remove('hidden');
+            if (statusEl) statusEl.innerText = "Modo Local (Sin Supabase)";
+            loadLocalData();
+            refreshCurrentView();
+            updateBadges();
+        }
+
+        async function loadPatientsFromSupabase() {
+            setLoading(true);
+            if (!patients.length) refreshCurrentView();
+            try { await _loadPatientsFromSupabase(); } finally { setLoading(false); refreshCurrentView(); }
+        }
+        async function _loadPatientsFromSupabase() {
+            if (!supabaseClient) return;
+
+            try {
+                const { data: pts, error: errPts } = await supabaseClient
+                    .from('patients')
+                    .select('*, diseases(*, records(id,type,title,date,doctor,notes,deleted_at))')
+                    .is('deleted_at', null)
+                    .order('created_at', { ascending: false });
+
+                if (errPts) throw errPts;
+                await loadTrashFromSupabase();
+
+                patients = (pts || []).map(p => ({
+                    id: String(p.id),
+                    name: p.name,
+                    dni: p.dni,
+                    age: p.age,
+                    phone: p.phone,
+                    notes: p.notes,
+                    diseases: (p.diseases || []).filter(d => !d.deleted_at).map(d => ({
+                        id: String(d.id),
+                        title: d.title,
+                        date: d.date,
+                        status: d.status,
+                        notes: d.notes,
+                        records: (d.records || []).filter(r => !r.deleted_at).map(r => ({
+                            id: String(r.id),
+                            type: r.type,
+                            title: r.title,
+                            date: r.date,
+                            doctor: r.doctor,
+                            notes: r.notes,
+                            images: parseImgs(r.images), imagesLoaded: r.images !== undefined
+                        }))
+                    }))
+                }));
+
+                refreshCurrentView();
+                updateBadges();
+            } catch(err) {
+                console.error(err); supabaseClient = null; document.getElementById('connection-status').innerText = 'Modo local (error de conexión)'; toast('No se pudo conectar a Supabase; se usa el modo local.', true);
+                loadLocalData();
+                refreshCurrentView();
+                updateBadges();
+            }
+        }
+
+        function openConfigModal() {
+            closeAllModals();
+            document.getElementById('cfg-supabase-url').value = supabaseUrl;
+            document.getElementById('cfg-supabase-key').value = supabaseKey;
+            document.getElementById('config-modal').classList.remove('hidden');
+        }
+
+        function saveSupabaseConfig(e) {
+            e.preventDefault();
+            supabaseUrl = document.getElementById('cfg-supabase-url').value.trim();
+            supabaseKey = document.getElementById('cfg-supabase-key').value.trim();
+
+            localStorage.setItem('sb_url', supabaseUrl);
+            localStorage.setItem('sb_key', supabaseKey);
+
+            closeModal('config-modal');
+            initSupabase();
+        }
+
+        // --- GENERAL NAVIGATION & HISTORY ---
+        window.onpopstate = function(event) {
+            const st = event.state;
+            if (st && st.view) { currentPatientId = st.patientId || null; currentDiseaseId = st.diseaseId || null; renderView(st.view, false); }
+            else renderView('patients', false);
+        };
+
+        function pushHistoryState(stateObj) {
+            history.pushState(stateObj, "", `#${stateObj.view}`);
+        }
+
+        function renderView(viewName, pushState = true) {
+            document.getElementById('view-patients').classList.add('hidden');
+            document.getElementById('view-patient-detail').classList.add('hidden');
+            document.getElementById('view-disease-detail').classList.add('hidden');
+            document.getElementById('view-trash').classList.add('hidden');
+
+            closeAllModals();
+
+            const backBtn = document.getElementById('back-nav-btn');
+
+            if (viewName === 'patients') {
+                document.getElementById('view-patients').classList.remove('hidden');
+                backBtn.classList.add('hidden');
+                currentPatientId = null;
+                currentDiseaseId = null;
+                renderPatients();
+            } else if (viewName === 'patient-detail') {
+                document.getElementById('view-patient-detail').classList.remove('hidden');
+                backBtn.classList.remove('hidden');
+                currentDiseaseId = null;
+                renderPatientDetail();
+            } else if (viewName === 'disease-detail') {
+                document.getElementById('view-disease-detail').classList.remove('hidden');
+                backBtn.classList.remove('hidden');
+                renderDiseaseDetail();
+            } else if (viewName === 'trash') {
+                document.getElementById('view-trash').classList.remove('hidden');
+                backBtn.classList.remove('hidden');
+                renderTrash();
+            }
+
+            if (pushState) {
+                pushHistoryState({ view: viewName, patientId: currentPatientId, diseaseId: currentDiseaseId });
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateToHome() { renderView('patients'); }
+        function navigateToTrash() { renderView('trash'); }
+        
+        function navigateBack() {
+            if (!document.getElementById('view-disease-detail').classList.contains('hidden')) {
+                renderView('patient-detail');
+            } else {
+                renderView('patients');
+            }
+        }
+
+        function refreshCurrentView() {
+            if (!document.getElementById('view-patients').classList.contains('hidden')) {
+                renderPatients();
+            } else if (!document.getElementById('view-patient-detail').classList.contains('hidden')) {
+                renderPatientDetail();
+            } else if (!document.getElementById('view-disease-detail').classList.contains('hidden')) {
+                renderDiseaseDetail();
+            } else if (!document.getElementById('view-trash').classList.contains('hidden')) {
+                renderTrash();
+            }
+        }
+
+        function generateId() {
+            return (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id_' + Math.random().toString(36).slice(2, 11);
+        }
+
+        function updateBadges() {
+            const count = trash.length;
+            const bDesktop = document.getElementById('trash-badge-desktop');
+            const bMobile = document.getElementById('trash-badge-mobile');
+
+            if (bDesktop && bMobile) {
+                if (count > 0) {
+                    bDesktop.innerText = count;
+                    bDesktop.classList.remove('hidden');
+                    bMobile.innerText = count;
+                    bMobile.classList.remove('hidden');
+                } else {
+                    bDesktop.classList.add('hidden');
+                    bMobile.classList.add('hidden');
+                }
+            }
+        }
+
+        // --- MODAL UTILITIES ---
+        function handleBackdropClick(event, modalId) {
+            if (event.target.id === modalId) {
+                closeModal(modalId);
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function closeAllModals() {
+            ['patient-modal', 'disease-modal', 'record-modal', 'quick-patients-modal', 'lightbox-modal', 'config-modal'].forEach(id => {
+                closeModal(id);
+            });
+        }
+
+        // --- UNDO BANNER ---
+        function showUndoBanner(message, undoCallback, isError = false) {
+            if (undoTimeout) clearTimeout(undoTimeout);
+            
+            undoAction = undoCallback; document.querySelector('#undo-banner button').classList.toggle('hidden', !undoCallback); document.getElementById('undo-text').classList.toggle('text-rose-300', isError);
+            document.getElementById('undo-text').innerText = message;
+            const banner = document.getElementById('undo-banner');
+            banner.classList.remove('hidden');
+
+            undoTimeout = setTimeout(() => {
+                banner.classList.add('hidden');
+                undoAction = null;
+            }, 7000);
+        }
+
+        function triggerUndo() {
+            if (undoAction) {
+                undoAction();
+                document.getElementById('undo-banner').classList.add('hidden');
+                if (undoTimeout) clearTimeout(undoTimeout);
+                undoAction = null;
+            }
+        }
+
+        // --- VISTA 1: LISTADO DE PACIENTES ---
+        function renderPatients() {
+            const query = (document.getElementById('patient-search')?.value || '').toLowerCase().trim();
+            const list = document.getElementById('patients-list');
+            if (!list) return;
+
+            const filtered = patients.filter(p => matchPatient(p, query));
+            if (window.__loading && !patients.length) {
+                list.innerHTML = '<div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200"><i class="fa-solid fa-spinner fa-spin text-3xl mb-2 text-indigo-400"></i><p class="font-semibold text-sm">Cargando pacientes…</p></div>';
+                return;
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                        <i class="fa-solid fa-user-slash text-4xl mb-2 text-slate-300"></i>
+                        <p class="font-semibold text-sm">No se encontraron pacientes</p>
+                        <p class="text-xs">Intente agregar uno nuevo con el botón superior.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = filtered.map(p => {
+                const diseaseCount = p.diseases ? p.diseases.length : 0;
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition flex flex-col justify-between cursor-pointer group" onclick="navigateToPatient('${p.id}')">
+                        <div>
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 font-bold flex items-center justify-center text-base border border-indigo-100">
+                                        ${esc((p.name || '?').charAt(0).toUpperCase())}
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition leading-snug">${esc(p.name)}</h3>
+                                        <p class="text-xs text-slate-400 font-medium">${esc(p.dni || 'Sin RUT/DNI')}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                                    <button onclick="openPatientModal('${p.id}')" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg transition" title="Editar">
+                                        <i class="fa-solid fa-pen text-xs"></i>
+                                    </button>
+                                    <button onclick="deletePatient('${p.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition" title="Eliminar">
+                                        <i class="fa-solid fa-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1 my-3 text-xs text-slate-500">
+                                ${p.age ? `<p><i class="fa-regular fa-calendar me-1 text-slate-400"></i> ${esc(p.age)} años</p>` : ''}
+                                ${p.phone ? `<p><i class="fa-solid fa-phone me-1 text-slate-400"></i> ${esc(p.phone)}</p>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                            <span class="bg-slate-100 text-slate-600 font-medium px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-folder me-1 text-indigo-500"></i> ${diseaseCount} ${diseaseCount === 1 ? 'Sección' : 'Secciones'}
+                            </span>
+                            <span class="text-indigo-600 font-semibold flex items-center gap-1">
+                                Ver ficha <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function navigateToPatient(patientId) {
+            currentPatientId = patientId;
+            renderView('patient-detail');
+        }
+
+        function openPatientModal(patientId = null) {
+            closeAllModals();
+            const form = document.getElementById('patient-form');
+            if (form) form.reset();
+
+            if (patientId) {
+                const p = patients.find(item => item.id === patientId);
+                if (p) {
+                    document.getElementById('patient-modal-title').innerText = 'Editar Paciente';
+                    document.getElementById('patient-id').value = p.id;
+                    document.getElementById('patient-name').value = p.name || '';
+                    document.getElementById('patient-dni').value = p.dni || '';
+                    document.getElementById('patient-age').value = p.age || '';
+                    document.getElementById('patient-phone').value = p.phone || '';
+                    document.getElementById('patient-notes').value = p.notes || '';
+                }
+            } else {
+                document.getElementById('patient-modal-title').innerText = 'Agregar Nuevo Paciente';
+                document.getElementById('patient-id').value = '';
+            }
+            document.getElementById('patient-modal').classList.remove('hidden');
+        }
+
+        async function handlePatientSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('patient-id').value;
+            const name = document.getElementById('patient-name').value.trim();
+            const dni = document.getElementById('patient-dni').value.trim();
+            const age = document.getElementById('patient-age').value.trim();
+            const phone = document.getElementById('patient-phone').value.trim();
+            const notes = document.getElementById('patient-notes').value.trim();
+
+            if (!name) return;
+
+            if (supabaseClient) {
+                try {
+                    if (id) {
+                        sbOk(await supabaseClient.from('patients').update({ name, dni, age: age || null, phone, notes }).eq('id', id));
+                        const p = patients.find(x => x.id === id);
+                        if (p) Object.assign(p, { name, dni, age: age || null, phone, notes });
+                    } else {
+                        const r = sbOk(await supabaseClient.from('patients').insert([{ name, dni, age: age || null, phone, notes }]).select('id').single());
+                        patients.unshift({ id: String(r.data.id), name, dni, age: age || null, phone, notes, diseases: [] });
+                    }
+                    setLoading(false); refreshCurrentView();
+                } catch(err) {
+                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true); return;
+                }
+            } else {
+                if (id) {
+                    const p = patients.find(item => item.id === id);
+                    if (p) { p.name = name; p.dni = dni; p.age = age; p.phone = phone; p.notes = notes; }
+                } else {
+                    patients.unshift({ id: generateId(), name, dni, age, phone, notes, diseases: [] });
+                }
+                saveLocalData();
+            }
+
+            closeModal('patient-modal');
+        }
+
+        async function deletePatient(id) {
+            const index = patients.findIndex(p => p.id === id);
+            if (index === -1) return;
+
+            const deletedPatient = patients[index];
+
+            if (supabaseClient) {
+                const now = new Date().toISOString();
+                sbOk(await supabaseClient.from('patients').update({ deleted_at: now }).eq('id', id));
+                await loadPatientsFromSupabase();
+
+                showUndoBanner(`Paciente "${deletedPatient.name}" movido a la papelera.`, async () => {
+                    sbOk(await supabaseClient.from('patients').update({ deleted_at: null }).eq('id', id));
+                    await loadPatientsFromSupabase();
+                });
+            } else {
+                patients.splice(index, 1);
+                trash.unshift({ type: 'patient', data: deletedPatient, deletedAt: new Date().toLocaleDateString() });
+                saveLocalData();
+
+                showUndoBanner(`Paciente "${deletedPatient.name}" movido a la papelera.`, () => {
+                    patients.splice(index, 0, deletedPatient);
+                    const tIndex = trash.findIndex(t => t.data.id === id);
+                    if (tIndex !== -1) trash.splice(tIndex, 1);
+                    saveLocalData();
+                });
+            }
+
+            if (currentPatientId === id) navigateToHome();
+        }
+
+        // --- VISTA 2: DETALLE DEL PACIENTE (DIAGNÓSTICOS) ---
+        function setDiseaseSortOrder(order) {
+            currentDiseaseSortOrder = order;
+            renderPatientDetail();
+        }
+
+        function renderPatientDetail() {
+            const patient = patients.find(p => p.id === currentPatientId);
+            if (!patient) return navigateToHome();
+
+            const header = document.getElementById('patient-header-card');
+            header.innerHTML = `
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center text-lg shadow-md">
+                            ${esc((patient.name || '?').charAt(0).toUpperCase())}
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900">${esc(patient.name)}</h2>
+                            <p class="text-xs text-slate-500 font-medium">RUT/DNI: ${esc(patient.dni || 'No registrado')} | Edad: ${patient.age ? esc(patient.age) + ' años' : 'N/E'}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openPatientModal('${patient.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+                            <i class="fa-solid fa-pen me-1"></i> Editar Paciente
+                        </button>
+                    </div>
+                </div>
+                ${patient.notes ? `<div class="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900"><i class="fa-solid fa-triangle-exclamation me-1 text-amber-600"></i> ${esc(patient.notes)}</div>` : ''}
+            `;
+
+            const diseasesList = document.getElementById('diseases-list');
+            let diseases = patient.diseases ? [...patient.diseases] : [];
+
+            diseases.sort((a, b) => {
+                const dateA = new Date(a.date || 0);
+                const dateB = new Date(b.date || 0);
+                return currentDiseaseSortOrder === 'date-desc' ? dateB - dateA : dateA - dateB;
+            });
+
+            if (diseases.length === 0) {
+                diseasesList.innerHTML = `
+                    <div class="col-span-full py-10 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                        <i class="fa-solid fa-folder-open text-4xl mb-2 text-slate-300"></i>
+                        <p class="font-semibold text-sm">No hay diagnósticos o secciones registradas</p>
+                        <p class="text-xs">Cree una sección o adjunte un examen/receta directamente.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            diseasesList.innerHTML = diseases.map(d => {
+                const recordsCount = d.records ? d.records.length : 0;
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition flex flex-col justify-between cursor-pointer group" onclick="navigateToDisease('${d.id}')">
+                        <div>
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <h3 class="font-bold text-slate-900 text-base group-hover:text-indigo-600 transition leading-snug">${esc(d.title)}</h3>
+                                <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                                    <button onclick="openDiseaseModal('${d.id}')" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg transition">
+                                        <i class="fa-solid fa-pen text-xs"></i>
+                                    </button>
+                                    <button onclick="deleteDisease('${d.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition">
+                                        <i class="fa-solid fa-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="inline-block px-2.5 py-0.5 text-[10px] font-bold rounded-md bg-indigo-50 text-indigo-700">${esc(d.status || 'Activo')}</span>
+                                ${d.date ? `<span class="text-xs text-slate-400 font-medium"><i class="fa-regular fa-calendar me-1"></i>${fmtDate(d.date)}</span>` : ''}
+                            </div>
+                            ${d.notes ? `<p class="text-xs text-slate-500 line-clamp-2 mb-3">${esc(d.notes)}</p>` : ''}
+                        </div>
+                        <div class="pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                            <span class="text-slate-500 font-medium">
+                                <i class="fa-solid fa-file-medical me-1 text-slate-400"></i> ${recordsCount} Documento(s)
+                            </span>
+                            <span class="text-indigo-600 font-semibold flex items-center gap-1">
+                                Abrir sección <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function navigateToDisease(diseaseId) {
+            currentDiseaseId = diseaseId;
+            renderView('disease-detail');
+        }
+
+        function openDiseaseModal(diseaseId = null) {
+            closeAllModals();
+            const form = document.getElementById('disease-form');
+            if (form) form.reset();
+
+            if (diseaseId) {
+                const patient = patients.find(p => p.id === currentPatientId);
+                const d = patient ? patient.diseases.find(item => item.id === diseaseId) : null;
+                if (d) {
+                    document.getElementById('disease-modal-title').innerText = 'Editar Sección';
+                    document.getElementById('disease-id').value = d.id;
+                    document.getElementById('disease-title').value = d.title || '';
+                    document.getElementById('disease-date').value = d.date || '';
+                    document.getElementById('disease-status').value = d.status || 'Activo';
+                    document.getElementById('disease-notes').value = d.notes || '';
+                }
+            } else {
+                document.getElementById('disease-modal-title').innerText = 'Nueva Sección / Diagnóstico';
+                document.getElementById('disease-id').value = '';
+                document.getElementById('disease-date').value = new Date().toISOString().split('T')[0];
+            }
+            document.getElementById('disease-modal').classList.remove('hidden');
+        }
+
+        async function handleDiseaseSubmit(e) {
+            e.preventDefault();
+            const diseaseId = document.getElementById('disease-id').value;
+            const title = document.getElementById('disease-title').value.trim();
+            const date = document.getElementById('disease-date').value;
+            const status = document.getElementById('disease-status').value;
+            const notes = document.getElementById('disease-notes').value.trim();
+
+            if (!title || !date || !currentPatientId) return;
+
+            if (supabaseClient) {
+                try {
+                    const pt = patients.find(x => x.id === currentPatientId);
+                    if (diseaseId) {
+                        sbOk(await supabaseClient.from('diseases').update({ title, date, status, notes }).eq('id', diseaseId));
+                        const d = pt && pt.diseases.find(x => x.id === diseaseId);
+                        if (d) Object.assign(d, { title, date, status, notes });
+                    } else {
+                        const r = sbOk(await supabaseClient.from('diseases').insert([{ patient_id: currentPatientId, title, date, status, notes }]).select('id').single());
+                        if (pt) pt.diseases.unshift({ id: String(r.data.id), title, date, status, notes, records: [] });
+                    }
+                    setLoading(false); refreshCurrentView();
+                } catch(err) {
+                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true); return;
+                }
+            } else {
+                const patient = patients.find(p => p.id === currentPatientId);
+                if (patient) {
+                    if (!patient.diseases) patient.diseases = [];
+                    if (diseaseId) {
+                        const d = patient.diseases.find(item => item.id === diseaseId);
+                        if (d) { d.title = title; d.date = date; d.status = status; d.notes = notes; }
+                    } else {
+                        patient.diseases.unshift({ id: generateId(), title, date, status, notes, records: [] });
+                    }
+                    saveLocalData();
+                }
+            }
+
+            closeModal('disease-modal');
+        }
+
+        async function deleteDisease(diseaseId) {
+            const patient = patients.find(p => p.id === currentPatientId);
+            if (!patient) return;
+            const index = patient.diseases.findIndex(d => d.id === diseaseId);
+            if (index === -1) return;
+
+            const deletedDisease = patient.diseases[index];
+
+            if (supabaseClient) {
+                const now = new Date().toISOString();
+                sbOk(await supabaseClient.from('diseases').update({ deleted_at: now }).eq('id', diseaseId));
+                await loadPatientsFromSupabase();
+
+                showUndoBanner(`Sección "${deletedDisease.title}" movida a la papelera.`, async () => {
+                    sbOk(await supabaseClient.from('diseases').update({ deleted_at: null }).eq('id', diseaseId));
+                    await loadPatientsFromSupabase();
+                });
+            } else {
+                patient.diseases.splice(index, 1);
+                trash.unshift({ type: 'disease', data: deletedDisease, patientId: currentPatientId, deletedAt: new Date().toLocaleDateString() });
+                saveLocalData();
+
+                showUndoBanner(`Sección "${deletedDisease.title}" movida a la papelera.`, () => {
+                    patient.diseases.splice(index, 0, deletedDisease);
+                    const tIndex = trash.findIndex(t => t.data.id === diseaseId);
+                    if (tIndex !== -1) trash.splice(tIndex, 1);
+                    saveLocalData();
+                });
+            }
+        }
+
+        // --- VISTA 3: RECETAS Y EXÁMENES ---
+        function renderDiseaseDetail() {
+            const patient = patients.find(p => p.id === currentPatientId);
+            if (!patient) return navigateToHome();
+            const disease = patient.diseases.find(d => d.id === currentDiseaseId);
+            if (!disease) return renderView('patient-detail');
+            ensureImages(disease.id);
+
+            const header = document.getElementById('disease-header-card');
+            header.innerHTML = `
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">${esc(patient.name)}</span>
+                    <h2 class="text-xl font-bold text-slate-900 mt-1">${esc(disease.title)}</h2>
+                    <p class="text-xs text-slate-500">${esc(disease.notes || 'Sin descripción adicional.')}</p>
+                </div>
+                <button onclick="openRecordModal(null)" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-camera"></i> Subir Receta / Examen
+                </button>
+            `;
+
+            renderRecords();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            ['all', 'exam', 'prescription'].forEach(f => {
+                const btn = document.getElementById(`filter-${f}`);
+                if (btn) {
+                    if (f === filter) {
+                        btn.className = "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-800 shadow-sm transition";
+                    } else {
+                        btn.className = "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition";
+                    }
+                }
+            });
+            renderRecords();
+        }
+
+        function setSortOrder(order) {
+            currentSortOrder = order;
+            renderRecords();
+        }
+
+        function renderRecords() {
+            const patient = patients.find(p => p.id === currentPatientId);
+            const disease = patient ? patient.diseases.find(d => d.id === currentDiseaseId) : null;
+            if (!disease) return;
+
+            const recordsList = document.getElementById('records-list');
+            let records = disease.records ? [...disease.records] : [];
+
+            if (currentFilter !== 'all') {
+                records = records.filter(r => r.type === currentFilter);
+            }
+
+            records.sort((a, b) => {
+                const dateA = new Date(a.date || 0);
+                const dateB = new Date(b.date || 0);
+                return currentSortOrder === 'date-desc' ? dateB - dateA : dateA - dateB;
+            });
+
+            if (records.length === 0) {
+                recordsList.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                        <i class="fa-solid fa-file-circle-xmark text-4xl mb-2 text-slate-300"></i>
+                        <p class="font-semibold text-sm">No hay archivos registrados aquí</p>
+                        <p class="text-xs">Presione "+ Subir Receta / Examen" para adjuntar imágenes.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            recordsList.innerHTML = records.map(r => {
+                const isExam = r.type === 'exam';
+                const imgs = r.images || [];
+                
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition">
+                        <div>
+                            <div class="p-4 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl ${isExam ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'} flex items-center justify-center text-sm font-bold">
+                                        <i class="fa-solid ${isExam ? 'fa-microscope' : 'fa-prescription-bottle-medical'}"></i>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] font-bold uppercase tracking-wider ${isExam ? 'text-blue-600' : 'text-purple-600'}">${isExam ? 'Examen' : 'Receta'}</span>
+                                        <h4 class="font-bold text-slate-900 text-sm leading-tight">${esc(r.title)}</h4>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="openRecordModal('${r.id}')" class="text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg transition">
+                                        <i class="fa-solid fa-pen text-xs"></i>
+                                    </button>
+                                    <button onclick="deleteRecord('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition">
+                                        <i class="fa-solid fa-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="p-4 space-y-3">
+                                <div class="flex justify-between text-xs text-slate-500">
+                                    <span><i class="fa-regular fa-calendar me-1 text-slate-400"></i> ${fmtDate(r.date)}</span>
+                                    ${r.doctor ? `<span><i class="fa-solid fa-user-doctor me-1 text-slate-400"></i> ${esc(r.doctor)}</span>` : ''}
+                                </div>
+
+                                ${r.notes ? `<p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-line">${esc(r.notes)}</p>` : ''}
+
+                                ${imgs.length > 0 ? `
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1.5">
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fotografías adjuntas (${imgs.length})</p>
+                                            ${imgs.length > 1 ? `<span class="text-[10px] font-semibold text-indigo-600 flex items-center gap-1"><i class="fa-solid fa-hand-pointer text-[9px]"></i> Desliza para ver más</span>` : ''}
+                                        </div>
+                                        <div class="carousel-slider flex gap-2 overflow-x-auto pb-2 pt-1 custom-scrollbar">
+                                            ${imgs.map((img, idx) => `
+                                                <div class="carousel-item flex-shrink-0 w-28 h-28 relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-900 cursor-pointer shadow-sm" onclick="openLightbox('${r.id}', ${idx})">
+                                                    <img src="${esc(img)}" class="w-full h-full object-cover group-hover:scale-105 transition">
+                                                    <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                                        <i class="fa-solid fa-expand text-xs"></i>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openRecordModalDirectly() {
+            const patient = patients.find(p => p.id === currentPatientId);
+            if (!patient || !patient.diseases || patient.diseases.length === 0) {
+                openDiseaseModal();
+                showUndoBanner('Cree una sección o diagnóstico primero.');
+                return;
+            }
+            openRecordModal(null);
+        }
+
+        function openRecordModal(recordId = null) {
+            closeAllModals();
+            const patient = patients.find(p => p.id === currentPatientId);
+            if (!patient) return;
+
+            const select = document.getElementById('record-disease-id');
+            select.innerHTML = patient.diseases.map(d => 
+                `<option value="${d.id}" ${d.id === currentDiseaseId ? 'selected' : ''}>${esc(d.title)}</option>`
+            ).join('');
+
+            currentRecordImages = [];
+
+            if (recordId) {
+                let rec = null;
+                for (const d of patient.diseases) {
+                    const r = (d.records || []).find(item => item.id === recordId);
+                    if (r) { rec = r; select.value = d.id; break; }
+                }
+
+                if (rec) {
+                    if (rec.imagesLoaded === false) return toast('Cargando fotos… intente de nuevo en un momento.', true);
+                    document.getElementById('record-modal-title').innerText = 'Editar Registro';
+                    document.getElementById('record-id').value = rec.id;
+                    document.getElementById('record-title').value = rec.title;
+                    document.getElementById('record-date').value = rec.date;
+                    document.getElementById('record-doctor').value = rec.doctor || '';
+                    document.getElementById('record-notes').value = rec.notes || '';
+                    
+                    const radios = document.getElementsByName('record-type');
+                    for (const radio of radios) {
+                        if (radio.value === rec.type) radio.checked = true;
+                    }
+                    currentRecordImages = rec.images ? [...rec.images] : [];
+                }
+            } else {
+                document.getElementById('record-modal-title').innerText = 'Adjuntar Receta o Examen';
+                document.getElementById('record-id').value = '';
+                document.getElementById('record-form').reset();
+                document.getElementById('record-date').value = new Date().toISOString().split('T')[0];
+            }
+
+            renderImagePreviews();
+            document.getElementById('record-modal').classList.remove('hidden');
+        }
+
+        async function handleMultipleImagesUpload(event) {
+            const input = event.target;
+            const files = Array.from(input.files);
+            if (!files.length) return;
+            for (const f of files) {
+                try { currentRecordImages.push(await compressImage(f)); }
+                catch (e) { toast('No se pudo leer "' + f.name + '".', true); }
+            }
+            input.value = '';
+            renderImagePreviews();
+        }
+        function compressImage(file, max = 1600, quality = 0.8) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const k = Math.min(1, max / Math.max(img.width, img.height));
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+                    const ctx = c.getContext('2d');
+                    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+                    ctx.drawImage(img, 0, 0, c.width, c.height);
+                    URL.revokeObjectURL(url);
+                    resolve(c.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img')); };
+                img.src = url;
+            });
+        }
+        function renderImagePreviews() {
+            const container = document.getElementById('record-images-preview');
+            if (!container) return;
+            container.innerHTML = currentRecordImages.map((img, idx) => `
+                <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-sm">
+                    <img src="${esc(img)}" class="w-full h-full object-cover">
+                    <button type="button" onclick="removeRecordImage(${idx})" class="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow hover:bg-rose-700 transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeRecordImage(index) {
+            currentRecordImages.splice(index, 1);
+            renderImagePreviews();
+        }
+
+        async function handleRecordSubmit(e) {
+            e.preventDefault();
+            const recordId = document.getElementById('record-id').value;
+            const diseaseId = document.getElementById('record-disease-id').value;
+            const typeRadio = document.querySelector('input[name="record-type"]:checked');
+            const type = typeRadio ? typeRadio.value : 'exam';
+            const title = document.getElementById('record-title').value.trim();
+            const date = document.getElementById('record-date').value;
+            const doctor = document.getElementById('record-doctor').value.trim();
+            const notes = document.getElementById('record-notes').value.trim();
+
+            if (!title || !date || !diseaseId) return;
+
+            if (supabaseClient) {
+                try {
+                    const imagesJson = JSON.stringify(currentRecordImages);
+                    const pt = patients.find(x => x.id === currentPatientId);
+                    if (recordId) {
+                        sbOk(await supabaseClient.from('records').update({ type, title, date, doctor, notes, images: imagesJson }).eq('id', recordId));
+                        for (const d of (pt ? pt.diseases : [])) {
+                            const rc = (d.records || []).find(x => x.id === recordId);
+                            if (!rc) continue;
+                            Object.assign(rc, { type, title, date, doctor, notes, images: [...currentRecordImages], imagesLoaded: true });
+                            if (d.id !== diseaseId) { d.records = d.records.filter(x => x !== rc); const nd = pt.diseases.find(x => x.id === diseaseId); if (nd) nd.records.unshift(rc); }
+                            break;
+                        }
+                    } else {
+                        const r = sbOk(await supabaseClient.from('records').insert([{ disease_id: diseaseId, type, title, date, doctor, notes, images: imagesJson }]).select('id').single());
+                        const nd = pt && pt.diseases.find(x => x.id === diseaseId);
+                        if (nd) nd.records.unshift({ id: String(r.data.id), type, title, date, doctor, notes, images: [...currentRecordImages], imagesLoaded: true });
+                    }
+                    setLoading(false); refreshCurrentView();
+                } catch(err) {
+                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true); return;
+                }
+            } else {
+                const patient = patients.find(p => p.id === currentPatientId);
+                const disease = patient ? patient.diseases.find(d => d.id === diseaseId) : null;
+                if (disease) {
+                    if (!disease.records) disease.records = [];
+                    if (recordId) {
+                        const rec = disease.records.find(r => r.id === recordId);
+                        if (rec) {
+                            rec.type = type; rec.title = title; rec.date = date; rec.doctor = doctor; rec.notes = notes;
+                            rec.images = [...currentRecordImages];
+                        }
+                    } else {
+                        disease.records.unshift({
+                            id: generateId(),
+                            type, title, date, doctor, notes,
+                            images: [...currentRecordImages]
+                        });
+                    }
+                    saveLocalData();
+                }
+            }
+
+            closeModal('record-modal');
+            if (!currentDiseaseId && diseaseId) {
+                currentDiseaseId = diseaseId;
+                renderView('disease-detail', false);
+            }
+        }
+
+        async function deleteRecord(recordId) {
+            const patient = patients.find(p => p.id === currentPatientId);
+            const disease = patient ? patient.diseases.find(d => d.id === currentDiseaseId) : null;
+            if (!disease) return;
+
+            const index = disease.records.findIndex(r => r.id === recordId);
+            if (index === -1) return;
+
+            const deletedRecord = disease.records[index];
+
+            if (supabaseClient) {
+                const now = new Date().toISOString();
+                sbOk(await supabaseClient.from('records').update({ deleted_at: now }).eq('id', recordId));
+                await loadPatientsFromSupabase();
+
+                showUndoBanner(`Registro "${deletedRecord.title}" eliminado.`, async () => {
+                    sbOk(await supabaseClient.from('records').update({ deleted_at: null }).eq('id', recordId));
+                    await loadPatientsFromSupabase();
+                });
+            } else {
+                disease.records.splice(index, 1);
+                trash.unshift({ type: 'record', data: deletedRecord, patientId: currentPatientId, diseaseId: currentDiseaseId, deletedAt: new Date().toLocaleDateString() });
+                saveLocalData();
+
+                showUndoBanner(`Registro "${deletedRecord.title}" eliminado.`, () => {
+                    disease.records.splice(index, 0, deletedRecord);
+                    const tIndex = trash.findIndex(t => t.data.id === recordId);
+                    if (tIndex !== -1) trash.splice(tIndex, 1);
+                    saveLocalData();
+                });
+            }
+        }
+
+        // --- MODAL LISTA RÁPIDA DE PACIENTES ---
+        function openQuickPatientsModal() {
+            closeAllModals();
+            renderQuickPatientsList();
+            document.getElementById('quick-patients-modal').classList.remove('hidden');
+        }
+
+        function renderQuickPatientsList() {
+            const query = (document.getElementById('quick-search')?.value || '').toLowerCase().trim();
+            const list = document.getElementById('quick-patients-list');
+            if (!list) return;
+
+            const filtered = patients.filter(p => matchPatient(p, query));
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<p class="text-xs text-center text-slate-400 py-6">No se encontraron pacientes.</p>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(p => `
+                <div onclick="selectQuickPatient('${p.id}')" class="p-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl cursor-pointer transition flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                            ${esc((p.name || '?').charAt(0).toUpperCase())}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-xs">${esc(p.name)}</h4>
+                            <p class="text-[10px] text-slate-400">${esc(p.dni || 'Sin DNI')}</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i>
+                </div>
+            `).join('');
+        }
+
+        function selectQuickPatient(id) {
+            closeModal('quick-patients-modal');
+            navigateToPatient(id);
+        }
+
+        // --- LIGHTBOX VISOR WITH SLIDER ---
+        function openLightbox(recordId, index = 0) {
+            const pt = patients.find(p => p.id === currentPatientId);
+            const ds = pt ? (pt.diseases || []).find(d => d.id === currentDiseaseId) : null;
+            const rc = ds ? (ds.records || []).find(r => r.id === recordId) : null;
+            currentLightboxImages = rc && rc.images ? rc.images : [];
+            if (!currentLightboxImages || currentLightboxImages.length === 0) return;
+
+            currentLightboxIndex = index;
+            updateLightboxUI();
+
+            const touchArea = document.getElementById('lightbox-touch-area');
+            if (touchArea) {
+                touchArea.ontouchstart = (e) => { touchStartX = e.changedTouches[0].screenX; };
+                touchArea.ontouchend = (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    const swipeThreshold = 50;
+                    if (touchEndX < touchStartX - swipeThreshold) nextLightboxImage();
+                    if (touchEndX > touchStartX + swipeThreshold) prevLightboxImage();
+                };
+            }
+
+            document.getElementById('lightbox-modal').classList.remove('hidden');
+        }
+
+        function updateLightboxUI() {
+            if (!currentLightboxImages.length) return;
+            const imgEl = document.getElementById('lightbox-image');
+            const counterEl = document.getElementById('lightbox-counter');
+            const prevBtn = document.getElementById('lightbox-prev-btn');
+            const nextBtn = document.getElementById('lightbox-next-btn');
+
+            imgEl.src = currentLightboxImages[currentLightboxIndex];
+            counterEl.innerText = `${currentLightboxIndex + 1} / ${currentLightboxImages.length}`;
+
+            if (currentLightboxImages.length > 1) {
+                prevBtn.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+            } else {
+                prevBtn.classList.add('hidden');
+                nextBtn.classList.add('hidden');
+            }
+        }
+
+        function prevLightboxImage() {
+            if (currentLightboxImages.length <= 1) return;
+            currentLightboxIndex = (currentLightboxIndex - 1 + currentLightboxImages.length) % currentLightboxImages.length;
+            updateLightboxUI();
+        }
+
+        function nextLightboxImage() {
+            if (currentLightboxImages.length <= 1) return;
+            currentLightboxIndex = (currentLightboxIndex + 1) % currentLightboxImages.length;
+            updateLightboxUI();
+        }
+
+        // --- VISTA PAPELERA ---
+        function renderTrash() {
+            const list = document.getElementById('trash-list');
+            if (!list) return;
+
+            if (trash.length === 0) {
+                list.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                        <i class="fa-solid fa-trash-arrow-up text-4xl mb-2 text-slate-300"></i>
+                        <p class="font-semibold text-sm">La papelera está vacía</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = trash.map((item, index) => `
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                            ${item.type === 'patient' ? 'Paciente' : item.type === 'disease' ? 'Sección' : 'Registro'}
+                        </span>
+                        <h4 class="font-bold text-slate-900 text-sm mt-1">${esc(item.data.name || item.data.title)}</h4>
+                        <p class="text-[10px] text-slate-400">Eliminado: ${item.deletedAt}</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="restoreFromTrash(${index})" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl transition">
+                            Restaurar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadTrashFromSupabase() {
+            const items = [];
+            try {
+                for (const [table, type, f] of [['patients','patient','name'],['diseases','disease','title'],['records','record','title']]) {
+                    const { data, error } = await supabaseClient.from(table).select('id,' + f + ',deleted_at').not('deleted_at', 'is', null);
+                    if (error) throw error;
+                    (data || []).forEach(r => items.push({ type, remote: true, table, data: { id: String(r.id), name: r[f], title: r[f] }, deletedAt: fmtDate(r.deleted_at) }));
+                }
+            } catch (e) { console.error(e); }
+            trash = items;
+        }
+        async function emptyRemoteTrash() {
+            for (const t of ['records', 'diseases', 'patients']) sbOk(await supabaseClient.from(t).delete().not('deleted_at', 'is', null));
+            await loadPatientsFromSupabase();
+        }
+        function restoreFromTrash(index) {
+            const it = trash[index];
+            if (!it) return;
+            if (it.remote) {
+                supabaseClient.from(it.table).update({ deleted_at: null }).eq('id', it.data.id).then(r => { sbOk(r); return loadPatientsFromSupabase(); });
+                return;
+            }
+            if (it.type !== 'patient') {
+                const pp = patients.find(x => x.id === it.patientId);
+                if (!pp || (it.type === 'record' && !(pp.diseases || []).some(x => x.id === it.diseaseId))) return toast('Restaure primero el paciente o la sección a la que pertenece.', true);
+            }
+            const item = trash.splice(index, 1)[0];
+            if (item.type === 'patient') {
+                patients.unshift(item.data);
+            } else if (item.type === 'disease') {
+                const p = patients.find(patient => patient.id === item.patientId);
+                if (p) p.diseases.unshift(item.data);
+            } else if (item.type === 'record') {
+                const p = patients.find(patient => patient.id === item.patientId);
+                const d = p ? p.diseases.find(dis => dis.id === item.diseaseId) : null;
+                if (d) d.records.unshift(item.data);
+            }
+            saveLocalData();
+            renderTrash();
+        }
+
+        function emptyTrash() {
+            if (trash.length === 0) return;
+            if (!confirm('¿Eliminar definitivamente todo lo de la papelera? No se puede deshacer.')) return;
+            if (supabaseClient) { emptyRemoteTrash(); return; }
+            trash = [];
+            saveLocalData();
+            renderTrash();
+        }
+
+        // --- FOTOS BAJO DEMANDA ---
+        const imgLoading = new Set();
+        async function ensureImages(diseaseId) {
+            if (!supabaseClient || imgLoading.has(diseaseId)) return;
+            const pt = patients.find(p => p.id === currentPatientId);
+            const d = pt && pt.diseases.find(x => x.id === diseaseId);
+            if (!d || !(d.records || []).some(r => r.imagesLoaded === false)) return;
+            imgLoading.add(diseaseId);
+            try {
+                const { data, error } = await supabaseClient.from('records').select('id,images').eq('disease_id', diseaseId);
+                if (error) throw error;
+                (data || []).forEach(row => { const rc = d.records.find(x => x.id === String(row.id)); if (rc) { rc.images = parseImgs(row.images); rc.imagesLoaded = true; } });
+                if (currentDiseaseId === diseaseId) renderRecords();
+            } catch (e) { console.error(e); toast('No se pudieron cargar las fotos.', true); }
+            finally { imgLoading.delete(diseaseId); }
+        }
+
+        // --- INDICADOR DE CARGA ---
+        let loadingTimer = null;
+        function setLoading(on, msg = 'Cargando…') {
+            window.__loading = on;
+            const el = document.getElementById('loading-bar');
+            if (!el) return;
+            document.getElementById('loading-text').innerText = msg;
+            el.classList.toggle('hidden', !on);
+            clearTimeout(loadingTimer);
+            if (on) loadingTimer = setTimeout(() => setLoading(false), 30000);
+        }
+        document.addEventListener('submit', e => {
+            if (supabaseClient && ['patient-form', 'disease-form', 'record-form'].includes(e.target.id)) setLoading(true, 'Guardando…');
+        }, true);
+
+        // --- RESPALDO ---
+        function exportBackup() {
+            const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), patients, trash }, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'respaldo_historial_' + new Date().toISOString().slice(0, 10) + '.json';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        }
+        async function importBackup(event) {
+            const input = event.target, file = input.files[0];
+            input.value = '';
+            if (!file) return;
+            if (supabaseClient) return toast('Importar solo funciona en modo local (sin Supabase conectado).', true);
+            try {
+                const data = JSON.parse(await file.text());
+                const list = Array.isArray(data) ? data : data.patients;
+                if (!Array.isArray(list) || list.some(p => !p || typeof p.name !== 'string')) throw new Error('Formato no válido');
+                if (!confirm('Esto reemplazará los datos locales actuales por los del respaldo (' + list.length + ' pacientes). ¿Continuar?')) return;
+                patients = list.map(p => ({ ...p, id: String(p.id || generateId()), diseases: (p.diseases || []).map(d => ({ ...d, id: String(d.id || generateId()), records: (d.records || []).map(r => ({ ...r, id: String(r.id || generateId()), images: parseImgs(r.images) })) })) }));
+                trash = Array.isArray(data.trash) ? data.trash : [];
+                saveLocalData();
+                closeModal('config-modal');
+                toast('Respaldo importado correctamente.');
+            } catch (e) { toast('No se pudo importar: ' + e.message, true); }
+        }
+
+        // --- APP INITIALIZATION ---
+        window.onload = function() {
+            initSupabase();
+            renderView('patients', false);
+        };
+    </script>
+</body>
+</html>
