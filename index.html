@@ -67,7 +67,7 @@
                     </div>
                     <div>
                         <h1 class="font-bold text-base leading-none tracking-tight">MedHistorial</h1>
-                        <p id="connection-status" class="text-[10px] text-indigo-200 font-medium">Modo Local (Sin Supabase)</p>
+                        <div class="flex items-center gap-1.5 mt-0.5"><span id="status-dot" title="Modo local" class="w-2.5 h-2.5 rounded-full bg-slate-400 ring-2 ring-white/30 transition-colors"></span><p id="connection-status" class="text-[10px] text-indigo-200 font-medium">Modo Local (Sin Supabase)</p></div>
                     </div>
                 </div>
             </div>
@@ -246,7 +246,7 @@
 
     <!-- MODAL 1: FORMULARIO PACIENTE -->
     <div id="patient-modal" onclick="handleBackdropClick(event, 'patient-modal')" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90dvh] flex flex-col" onclick="event.stopPropagation()">
             <h3 id="patient-modal-title" class="text-lg font-bold text-slate-900 mb-4 flex-shrink-0">Agregar Paciente</h3>
             <form id="patient-form" onsubmit="handlePatientSubmit(event)" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">
                 <input type="hidden" id="patient-id">
@@ -272,7 +272,7 @@
                     <label class="block text-xs font-semibold text-slate-700 mb-1">ALERTAS / OBSERVACIONES</label>
                     <textarea id="patient-notes" rows="2" placeholder="Alergias, medicamentos crónicos..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
                 </div>
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <div class="flex justify-end gap-2 pt-3 pb-1 border-t border-slate-100 sticky bottom-0 bg-white z-10">
                     <button type="button" onclick="closeModal('patient-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Guardar Paciente</button>
                 </div>
@@ -282,7 +282,7 @@
 
     <!-- MODAL 2: FORMULARIO SECCIÓN / DIAGNÓSTICO -->
     <div id="disease-modal" onclick="handleBackdropClick(event, 'disease-modal')" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90dvh] flex flex-col" onclick="event.stopPropagation()">
             <h3 id="disease-modal-title" class="text-lg font-bold text-slate-900 mb-4 flex-shrink-0">Nueva Sección / Diagnóstico</h3>
             <form id="disease-form" onsubmit="handleDiseaseSubmit(event)" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">
                 <input type="hidden" id="disease-id">
@@ -309,7 +309,7 @@
                     <label class="block text-xs font-semibold text-slate-700 mb-1">DESCRIPCIÓN GENERAL / OBSERVACIONES</label>
                     <textarea id="disease-notes" rows="3" placeholder="Detalles de la condición, antecedentes..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
                 </div>
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <div class="flex justify-end gap-2 pt-3 pb-1 border-t border-slate-100 sticky bottom-0 bg-white z-10">
                     <button type="button" onclick="closeModal('disease-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Guardar Sección</button>
                 </div>
@@ -319,7 +319,7 @@
 
     <!-- MODAL 3: RECETA / EXAMEN CON MÚLTIPLES IMÁGENES -->
     <div id="record-modal" onclick="handleBackdropClick(event, 'record-modal')" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] flex flex-col" onclick="event.stopPropagation()">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90dvh] flex flex-col" onclick="event.stopPropagation()">
             <h3 id="record-modal-title" class="text-lg font-bold text-slate-900 mb-4 flex-shrink-0">Adjuntar Examen o Receta</h3>
             <form id="record-form" onsubmit="handleRecordSubmit(event)" class="space-y-4 overflow-y-auto custom-scrollbar pr-1 flex-1">
                 <input type="hidden" id="record-id">
@@ -363,12 +363,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">IMÁGENES (Permite múltiple selección)</label>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">FOTOS Y PDF (Permite múltiple selección)</label>
                     <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50 hover:bg-slate-100 transition cursor-pointer relative">
-                        <input type="file" id="record-images" accept="image/*" multiple onchange="handleMultipleImagesUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                        <input type="file" id="record-images" accept="image/*,application/pdf" multiple onchange="handleMultipleImagesUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                         <i class="fa-solid fa-cloud-arrow-up text-indigo-500 text-2xl mb-1"></i>
-                        <p class="text-xs text-slate-600 font-medium">Seleccionar fotos</p>
-                        <p class="text-[10px] text-slate-400">Puedes agregar varias imágenes a la vez</p>
+                        <p class="text-xs text-slate-600 font-medium">Seleccionar fotos o PDF</p>
+                        <p class="text-[10px] text-slate-400">Imágenes o PDF (cada PDF hasta 3 MB)</p>
                     </div>
                     
                     <div id="record-images-preview" class="grid grid-cols-3 gap-2 mt-3">
@@ -381,7 +381,7 @@
                     <textarea id="record-notes" rows="2" placeholder="Indicaciones de toma o hallazgos..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <div class="flex justify-end gap-2 pt-3 pb-1 border-t border-slate-100 sticky bottom-0 bg-white z-10">
                     <button type="button" onclick="closeModal('record-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Guardar Registro</button>
                 </div>
@@ -410,7 +410,7 @@
 
     <!-- MODAL 5: VISOR DE IMAGEN (LIGHTBOX CON SLIDER / GALERÍA) -->
     <div id="lightbox-modal" onclick="handleBackdropClick(event, 'lightbox-modal')" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
+        <div class="relative max-w-4xl w-full max-h-[90dvh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
             <div class="absolute -top-10 left-0 right-0 flex items-center justify-between text-white text-sm px-2">
                 <span id="lightbox-counter" class="font-medium text-slate-300">1 / 1</span>
                 <button onclick="closeModal('lightbox-modal')" class="hover:text-slate-300 font-bold flex items-center gap-1">
@@ -454,7 +454,7 @@
                     <label class="block text-xs font-semibold text-slate-700 mb-1">SUPABASE ANON KEY</label>
                     <input type="password" id="cfg-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
-                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <div class="flex justify-end gap-2 pt-3 pb-1 border-t border-slate-100 sticky bottom-0 bg-white z-10">
                     <button type="button" onclick="closeModal('config-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancelar</button>
                     <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition">Conectar y Sincronizar</button>
                 </div>
@@ -493,9 +493,9 @@
         const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[.\-\s]/g, '');
         const matchPatient = (p, q) => { q = norm(q); return !q || norm(p.name).includes(q) || norm(p.dni).includes(q); };
         const parseImgs = v => { try { const a = typeof v === 'string' ? JSON.parse(v || '[]') : (v || []); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
-        const toast = (msg, isError = false) => { setLoading(false); showUndoBanner(msg, null, isError); };
+        const toast = (msg, isError = false, sbError = false) => { setLoading(false); if (sbError && supabaseClient) window.__sbErr = String(msg); updateLight(); showUndoBanner(msg, null, isError); };
         const sbOk = res => { if (res && res.error) throw res.error; return res; };
-        window.addEventListener('unhandledrejection', e => { console.error(e.reason); toast('Error: ' + (e.reason?.message || e.reason), true); });
+        window.addEventListener('unhandledrejection', e => { console.error(e.reason); toast('Error: ' + (e.reason?.message || e.reason), true, true); });
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') closeAllModals();
             const lb = !document.getElementById('lightbox-modal').classList.contains('hidden');
@@ -629,7 +629,7 @@
                 refreshCurrentView();
                 updateBadges();
             } catch(err) {
-                console.error(err); supabaseClient = null; document.getElementById('connection-status').innerText = 'Modo local (error de conexión)'; toast('No se pudo conectar a Supabase; se usa el modo local.', true);
+                console.error(err); supabaseClient = null; window.__sbFail = true; updateLight(); document.getElementById('connection-status').innerText = 'Modo local (error de conexión)'; toast('No se pudo conectar a Supabase; se usa el modo local.', true);
                 loadLocalData();
                 refreshCurrentView();
                 updateBadges();
@@ -908,7 +908,7 @@
                     }
                     setLoading(false); refreshCurrentView();
                 } catch(err) {
-                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true); return;
+                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true, true); return;
                 }
             } else {
                 if (id) {
@@ -1092,7 +1092,7 @@
                     }
                     setLoading(false); refreshCurrentView();
                 } catch(err) {
-                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true); return;
+                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true, true); return;
                 }
             } else {
                 const patient = patients.find(p => p.id === currentPatientId);
@@ -1253,13 +1253,13 @@
                                 ${imgs.length > 0 ? `
                                     <div>
                                         <div class="flex justify-between items-center mb-1.5">
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fotografías adjuntas (${imgs.length})</p>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Archivos adjuntos (${imgs.length})</p>
                                             ${imgs.length > 1 ? `<span class="text-[10px] font-semibold text-indigo-600 flex items-center gap-1"><i class="fa-solid fa-hand-pointer text-[9px]"></i> Desliza para ver más</span>` : ''}
                                         </div>
                                         <div class="carousel-slider flex gap-2 overflow-x-auto pb-2 pt-1 custom-scrollbar">
                                             ${imgs.map((img, idx) => `
                                                 <div class="carousel-item flex-shrink-0 w-28 h-28 relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-900 cursor-pointer shadow-sm" onclick="openLightbox('${r.id}', ${idx})">
-                                                    <img src="${esc(img)}" class="w-full h-full object-cover group-hover:scale-105 transition">
+                                                    ${isPdf(img) ? `<div class="w-full h-full flex flex-col items-center justify-center gap-1 bg-rose-600 text-white"><i class="fa-solid fa-file-pdf text-3xl"></i><span class="text-[10px] font-bold">PDF</span></div>` : `<img src="${esc(img)}" class="w-full h-full object-cover group-hover:scale-105 transition">`}
                                                     <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
                                                         <i class="fa-solid fa-expand text-xs"></i>
                                                     </div>
@@ -1335,8 +1335,8 @@
             const files = Array.from(input.files);
             if (!files.length) return;
             for (const f of files) {
-                try { currentRecordImages.push(await compressImage(f)); }
-                catch (e) { toast('No se pudo leer "' + f.name + '".', true); }
+                try { currentRecordImages.push(f.type === 'application/pdf' ? await readPdf(f) : await compressImage(f)); }
+                catch (e) { toast(e.message && e.message !== 'img' ? e.message : 'No se pudo leer "' + f.name + '".', true); }
             }
             input.value = '';
             renderImagePreviews();
@@ -1364,7 +1364,7 @@
             if (!container) return;
             container.innerHTML = currentRecordImages.map((img, idx) => `
                 <div class="relative group aspect-square rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-sm">
-                    <img src="${esc(img)}" class="w-full h-full object-cover">
+                    ${isPdf(img) ? `<div class="w-full h-full flex flex-col items-center justify-center gap-1 bg-rose-600 text-white"><i class="fa-solid fa-file-pdf text-3xl"></i><span class="text-[10px] font-bold">PDF</span></div>` : `<img src="${esc(img)}" class="w-full h-full object-cover">`}
                     <button type="button" onclick="removeRecordImage(${idx})" class="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow hover:bg-rose-700 transition">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
@@ -1410,7 +1410,7 @@
                     }
                     setLoading(false); refreshCurrentView();
                 } catch(err) {
-                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true); return;
+                    console.error(err); toast('No se pudo guardar: ' + (err.message || err), true, true); return;
                 }
             } else {
                 const patient = patients.find(p => p.id === currentPatientId);
@@ -1519,7 +1519,11 @@
             const pt = patients.find(p => p.id === currentPatientId);
             const ds = pt ? (pt.diseases || []).find(d => d.id === currentDiseaseId) : null;
             const rc = ds ? (ds.records || []).find(r => r.id === recordId) : null;
-            currentLightboxImages = rc && rc.images ? rc.images : [];
+            const all = rc && rc.images ? rc.images : [];
+            const clicked = all[index];
+            if (isPdf(clicked)) return openPdf(clicked);
+            currentLightboxImages = all.filter(u => !isPdf(u));
+            index = Math.max(0, currentLightboxImages.indexOf(clicked));
             if (!currentLightboxImages || currentLightboxImages.length === 0) return;
 
             currentLightboxIndex = index;
@@ -1653,6 +1657,41 @@
             renderTrash();
         }
 
+        // --- LUZ DE ESTADO Y PDF ---
+        function updateLight() {
+            const d = document.getElementById('status-dot');
+            if (!d) return;
+            let c = 'bg-slate-400', t = 'Modo local';
+            if (!supabaseClient) { if (window.__sbFail) { c = 'bg-rose-500'; t = 'Sin conexión con Supabase'; } }
+            else if (window.__loading) { c = 'bg-amber-400 animate-pulse'; t = 'Sincronizando con Supabase…'; }
+            else if (window.__sbErr) { c = 'bg-rose-500'; t = window.__sbErr; }
+            else { c = 'bg-emerald-400'; t = 'Conectado a Supabase'; }
+            d.className = 'w-2.5 h-2.5 rounded-full ring-2 ring-white/30 transition-colors ' + c;
+            d.title = t;
+            const st = document.getElementById('connection-status');
+            if (st && supabaseClient) st.innerText = window.__loading ? 'Sincronizando con Supabase…' : (window.__sbErr ? 'Error con Supabase (ver luz)' : 'Conectado a Supabase');
+        }
+        const isPdf = u => String(u || '').startsWith('data:application/pdf');
+        function readPdf(file) {
+            return new Promise((resolve, reject) => {
+                if (file.size > 3 * 1024 * 1024) return reject(new Error('"' + file.name + '" pesa más de 3 MB.'));
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = () => reject(new Error('img'));
+                r.readAsDataURL(file);
+            });
+        }
+        function openPdf(u) {
+            try {
+                const bin = atob(u.split(',')[1]);
+                const arr = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                const url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+                window.open(url, '_blank');
+                setTimeout(() => URL.revokeObjectURL(url), 60000);
+            } catch (e) { toast('No se pudo abrir el PDF.', true); }
+        }
+
         // --- FOTOS BAJO DEMANDA ---
         const imgLoading = new Set();
         async function ensureImages(diseaseId) {
@@ -1666,20 +1705,21 @@
                 if (error) throw error;
                 (data || []).forEach(row => { const rc = d.records.find(x => x.id === String(row.id)); if (rc) { rc.images = parseImgs(row.images); rc.imagesLoaded = true; } });
                 if (currentDiseaseId === diseaseId) renderRecords();
-            } catch (e) { console.error(e); toast('No se pudieron cargar las fotos.', true); }
+            } catch (e) { console.error(e); toast('No se pudieron cargar las fotos.', true, true); }
             finally { imgLoading.delete(diseaseId); }
         }
 
         // --- INDICADOR DE CARGA ---
         let loadingTimer = null;
         function setLoading(on, msg = 'Cargando…') {
-            window.__loading = on;
+            window.__loading = on; if (on) window.__sbErr = false;
             const el = document.getElementById('loading-bar');
             if (!el) return;
             document.getElementById('loading-text').innerText = msg;
             el.classList.toggle('hidden', !on);
             clearTimeout(loadingTimer);
             if (on) loadingTimer = setTimeout(() => setLoading(false), 30000);
+            updateLight();
         }
         document.addEventListener('submit', e => {
             if (supabaseClient && ['patient-form', 'disease-form', 'record-form'].includes(e.target.id)) setLoading(true, 'Guardando…');
