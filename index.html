@@ -125,7 +125,7 @@
 
         <!-- VISTA 2: DETALLE DEL PACIENTE (DIAGNÓSTICOS / SECCIONES) -->
         <section id="view-patient-detail" class="hidden space-y-4">
-            <div id="patient-header-card" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 relative overflow-hidden">
+            <div id="patient-header-card" class="bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-2xl shadow-lg p-5 relative overflow-hidden">
                 <!-- Datos cargados dinámicamente -->
             </div>
 
@@ -162,7 +162,7 @@
 
         <!-- VISTA 3: DETALLE DE ENFERMEDAD (RECETAS Y EXÁMENES) -->
         <section id="view-disease-detail" class="hidden space-y-4">
-            <div id="disease-header-card" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div id="disease-header-card" class="bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-2xl shadow-lg p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                 <!-- Contenido dinámico -->
             </div>
 
@@ -411,26 +411,23 @@
     </div>
 
     <!-- MODAL 5: VISOR DE IMAGEN (LIGHTBOX CON SLIDER / GALERÍA) -->
-    <div id="lightbox-modal" onclick="handleBackdropClick(event, 'lightbox-modal')" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="relative max-w-4xl w-full max-h-[90dvh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
-            <div class="absolute -top-10 left-0 right-0 flex items-center justify-between text-white text-sm px-2">
-                <span id="lightbox-counter" class="font-medium text-slate-300">1 / 1</span>
-                <button onclick="closeModal('lightbox-modal')" class="hover:text-slate-300 font-bold flex items-center gap-1">
-                    <i class="fa-solid fa-xmark text-lg"></i> Cerrar
-                </button>
+    <div id="lightbox-modal" class="fixed inset-0 z-50 hidden bg-slate-950/95 flex flex-col">
+        <div class="flex items-center justify-between gap-2 px-4 py-3 text-white text-sm">
+            <span id="lightbox-counter" class="font-medium text-slate-300">1 / 1</span>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="zoomLightbox(1/1.5)" aria-label="Alejar" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                <button type="button" onclick="zoomLightbox(1.5)" aria-label="Acercar" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                <button type="button" onclick="resetLightboxZoom()" aria-label="Restablecer zoom" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-expand"></i></button>
+                <button type="button" onclick="closeModal('lightbox-modal')" class="ml-1 px-3 h-9 rounded-full bg-white/10 hover:bg-white/20 font-semibold flex items-center gap-1 transition"><i class="fa-solid fa-xmark"></i> Cerrar</button>
             </div>
-
-            <div class="relative w-full flex items-center justify-center group" id="lightbox-touch-area">
-                <button id="lightbox-prev-btn" onclick="prevLightboxImage()" class="absolute left-2 z-10 w-10 h-10 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center shadow-lg transition opacity-80 hover:opacity-100">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </button>
-
-                <img id="lightbox-image" src="" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-slate-800 transition-all duration-200">
-
-                <button id="lightbox-next-btn" onclick="nextLightboxImage()" class="absolute right-2 z-10 w-10 h-10 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center shadow-lg transition opacity-80 hover:opacity-100">
-                    <i class="fa-solid fa-chevron-right"></i>
-                </button>
-            </div>
+        </div>
+        <div id="lightbox-stage" class="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center select-none" style="touch-action: none;">
+            <img id="lightbox-image" src="" alt="Imagen adjunta" draggable="false" class="rounded-lg shadow-2xl will-change-transform" style="max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center center;">
+        </div>
+        <div class="flex items-center justify-center gap-4 px-4 pt-3 text-white" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+            <button type="button" id="lightbox-prev-btn" onclick="prevLightboxImage()" aria-label="Anterior" class="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="lightbox-zoom-label" class="text-xs text-slate-400 w-14 text-center">100%</span>
+            <button type="button" id="lightbox-next-btn" onclick="nextLightboxImage()" aria-label="Siguiente" class="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </div>
 
@@ -982,16 +979,16 @@
             header.innerHTML = `
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold flex items-center justify-center text-lg shadow-md">
+                        <div class="w-12 h-12 rounded-2xl bg-white/20 ring-2 ring-white/40 text-white font-bold flex items-center justify-center text-lg">
                             ${esc((patient.name || '?').charAt(0).toUpperCase())}
                         </div>
                         <div>
-                            <h2 class="text-lg font-bold text-slate-900">${esc(patient.name)}</h2>
-                            <p class="text-xs text-slate-500 font-medium">RUT/DNI: ${esc(patient.dni || 'No registrado')} | Edad: ${patient.age ? esc(patient.age) + ' años' : 'N/E'}</p>
+                            <h2 class="text-lg font-bold text-white">${esc(patient.name)}</h2>
+                            <p class="text-xs text-indigo-100 font-medium">RUT/DNI: ${esc(patient.dni || 'No registrado')} | Edad: ${patient.age ? esc(patient.age) + ' años' : 'N/E'}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="openPatientModal('${patient.id}')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
+                        <button onclick="openPatientModal('${patient.id}')" class="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-xl transition">
                             <i class="fa-solid fa-pen me-1"></i> Editar Paciente
                         </button>
                     </div>
@@ -1167,11 +1164,11 @@
             const header = document.getElementById('disease-header-card');
             header.innerHTML = `
                 <div>
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">${esc(patient.name)}</span>
-                    <h2 class="text-xl font-bold text-slate-900 mt-1">${esc(disease.title)}</h2>
-                    <p class="text-xs text-slate-500">${esc(disease.notes || 'Sin descripción adicional.')}</p>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-white bg-white/20 px-2 py-0.5 rounded-md">${esc(patient.name)}</span>
+                    <h2 class="text-xl font-bold text-white mt-1">${esc(disease.title)}</h2>
+                    <p class="text-xs text-indigo-100">${esc(disease.notes || 'Sin descripción adicional.')}</p>
                 </div>
-                <button onclick="openRecordModal(null)" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-2">
+                <button onclick="openRecordModal(null)" class="w-full sm:w-auto px-4 py-2.5 bg-white hover:bg-indigo-50 text-indigo-700 font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-camera"></i> Subir Receta / Examen
                 </button>
             `;
@@ -1234,9 +1231,9 @@
                 
 
                 return `
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition">
+                    <div class="bg-white rounded-2xl border border-slate-200 border-l-4 ${isExam ? 'border-l-blue-500' : 'border-l-purple-500'} shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition">
                         <div>
-                            <div class="p-4 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+                            <div class="p-4 border-b border-slate-100 flex items-start justify-between ${isExam ? 'bg-blue-50' : 'bg-purple-50'}">
                                 <div class="flex items-center gap-2.5">
                                     <div class="w-8 h-8 rounded-xl ${isExam ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'} flex items-center justify-center text-sm font-bold">
                                         <i class="fa-solid ${isExam ? 'fa-microscope' : 'fa-prescription-bottle-medical'}"></i>
@@ -1530,6 +1527,83 @@
             navigateToPatient(id);
         }
 
+        // --- ZOOM Y GESTOS DEL VISOR ---
+        const lb = { s: 1, tx: 0, ty: 0, ox: 0, oy: 0, sx: 0, sy: 0, pts: new Map(), startDist: 0, startS: 1, multi: false, lastTap: 0 };
+        function lbApply(smooth = false) {
+            const img = document.getElementById('lightbox-image'), st = document.getElementById('lightbox-stage');
+            const mx = Math.max(0, (img.offsetWidth * lb.s - st.clientWidth) / 2);
+            const my = Math.max(0, (img.offsetHeight * lb.s - st.clientHeight) / 2);
+            lb.tx = Math.min(mx, Math.max(-mx, lb.tx));
+            lb.ty = Math.min(my, Math.max(-my, lb.ty));
+            img.style.transition = smooth ? 'transform .2s ease' : 'none';
+            img.style.transform = `translate(${lb.tx}px, ${lb.ty}px) scale(${lb.s})`;
+            st.style.cursor = lb.s > 1 ? 'grab' : 'default';
+            document.getElementById('lightbox-zoom-label').textContent = Math.round(lb.s * 100) + '%';
+        }
+        function lbReset() { lb.s = 1; lb.tx = 0; lb.ty = 0; lb.pts.clear(); lbApply(); }
+        function lbZoomAt(ns, fx, fy, smooth = false) {
+            ns = Math.min(6, Math.max(1, ns));
+            const k = ns / lb.s;
+            lb.tx = fx - (fx - lb.tx) * k;
+            lb.ty = fy - (fy - lb.ty) * k;
+            lb.s = ns;
+            if (ns === 1) { lb.tx = 0; lb.ty = 0; }
+            lbApply(smooth);
+        }
+        function zoomLightbox(f) { lbZoomAt(lb.s * f, 0, 0, true); }
+        function resetLightboxZoom() { lbZoomAt(1, 0, 0, true); }
+        function initLightboxGestures() {
+            const st = document.getElementById('lightbox-stage');
+            if (!st) return;
+            const pt = e => { const r = st.getBoundingClientRect(); return { x: e.clientX - r.left - r.width / 2, y: e.clientY - r.top - r.height / 2 }; };
+            st.addEventListener('wheel', e => {
+                e.preventDefault();
+                const p = pt(e);
+                lbZoomAt(lb.s * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), p.x, p.y);
+            }, { passive: false });
+            st.addEventListener('pointerdown', e => {
+                st.setPointerCapture(e.pointerId);
+                lb.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (lb.pts.size === 1) {
+                    lb.sx = e.clientX; lb.sy = e.clientY; lb.ox = lb.tx; lb.oy = lb.ty; lb.multi = false;
+                    const now = Date.now();
+                    if (now - lb.lastTap < 300) { const p = pt(e); lbZoomAt(lb.s > 1 ? 1 : 2.5, p.x, p.y, true); lb.lastTap = 0; }
+                    else lb.lastTap = now;
+                } else if (lb.pts.size === 2) {
+                    lb.multi = true;
+                    const [a, b] = [...lb.pts.values()];
+                    lb.startDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+                    lb.startS = lb.s;
+                }
+            });
+            st.addEventListener('pointermove', e => {
+                if (!lb.pts.has(e.pointerId)) return;
+                lb.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (lb.pts.size === 2) {
+                    const [a, b] = [...lb.pts.values()];
+                    const r = st.getBoundingClientRect();
+                    const fx = (a.x + b.x) / 2 - r.left - r.width / 2, fy = (a.y + b.y) / 2 - r.top - r.height / 2;
+                    lbZoomAt(lb.startS * Math.hypot(a.x - b.x, a.y - b.y) / lb.startDist, fx, fy);
+                } else if (lb.pts.size === 1 && lb.s > 1) {
+                    lb.tx = lb.ox + (e.clientX - lb.sx);
+                    lb.ty = lb.oy + (e.clientY - lb.sy);
+                    lbApply();
+                }
+            });
+            const end = e => {
+                if (!lb.pts.delete(e.pointerId)) return;
+                if (lb.pts.size === 0 && !lb.multi && lb.s === 1 && e.type === 'pointerup') {
+                    const dx = e.clientX - lb.sx, dy = e.clientY - lb.sy;
+                    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { dx < 0 ? nextLightboxImage() : prevLightboxImage(); }
+                }
+                if (lb.pts.size === 1) { const p = [...lb.pts.values()][0]; lb.sx = p.x; lb.sy = p.y; lb.ox = lb.tx; lb.oy = lb.ty; }
+                if (lb.pts.size === 0 && lb.s < 1.05) lbZoomAt(1, 0, 0, true);
+            };
+            st.addEventListener('pointerup', end);
+            st.addEventListener('pointercancel', end);
+        }
+        document.addEventListener('DOMContentLoaded', initLightboxGestures);
+
         // --- LIGHTBOX VISOR WITH SLIDER ---
         function openLightbox(recordId, index = 0) {
             const pt = patients.find(p => p.id === currentPatientId);
@@ -1545,22 +1619,12 @@
             currentLightboxIndex = index;
             updateLightboxUI();
 
-            const touchArea = document.getElementById('lightbox-touch-area');
-            if (touchArea) {
-                touchArea.ontouchstart = (e) => { touchStartX = e.changedTouches[0].screenX; };
-                touchArea.ontouchend = (e) => {
-                    touchEndX = e.changedTouches[0].screenX;
-                    const swipeThreshold = 50;
-                    if (touchEndX < touchStartX - swipeThreshold) nextLightboxImage();
-                    if (touchEndX > touchStartX + swipeThreshold) prevLightboxImage();
-                };
-            }
-
             document.getElementById('lightbox-modal').classList.remove('hidden');
         }
 
         function updateLightboxUI() {
             if (!currentLightboxImages.length) return;
+            lbReset();
             const imgEl = document.getElementById('lightbox-image');
             const counterEl = document.getElementById('lightbox-counter');
             const prevBtn = document.getElementById('lightbox-prev-btn');
