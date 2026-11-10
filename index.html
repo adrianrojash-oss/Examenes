@@ -56,6 +56,11 @@
         </div>
     </div>
 
+    <div id="offline-banner" class="fixed top-16 left-1/2 -translate-x-1/2 z-[65] hidden items-center gap-2 px-4 py-2 rounded-full bg-rose-600 text-white text-xs font-semibold shadow-lg pointer-events-none">
+        <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+        <i class="fa-solid fa-triangle-exclamation"></i> <span id="offline-text">Sin conexión a internet</span>
+    </div>
+
     <!-- HEADER / TOP NAV -->
     <header class="bg-indigo-700 text-white shadow-md sticky top-0 z-30">
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -129,13 +134,9 @@
                 <!-- Datos cargados dinámicamente -->
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/80 p-4 rounded-2xl border border-indigo-100 shadow-sm">
-                <button onclick="openRecordModalDirectly()" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 active:scale-95 text-sm">
-                    <i class="fa-solid fa-circle-plus text-lg"></i>
-                    <span>+ Agregar Receta o Examen</span>
-                </button>
-                <button onclick="openDiseaseModal()" class="w-full py-3 px-4 bg-white hover:bg-slate-100 text-slate-700 font-semibold rounded-xl border border-slate-300 shadow-sm transition flex items-center justify-center gap-2 active:scale-95 text-sm">
-                    <i class="fa-solid fa-folder-plus text-indigo-600"></i>
+            <div class="grid grid-cols-1 gap-3 bg-indigo-50/80 p-4 rounded-2xl border border-indigo-100 shadow-sm">
+                <button onclick="openDiseaseModal()" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 active:scale-95 text-sm">
+                    <i class="fa-solid fa-folder-plus text-lg"></i>
                     <span>+ Nueva Sección o Diagnóstico</span>
                 </button>
             </div>
@@ -182,10 +183,6 @@
                         </select>
                     </div>
                 </div>
-
-                <button onclick="openRecordModal(null)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Adjuntar en esta Sección
-                </button>
             </div>
 
             <div id="records-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -415,10 +412,10 @@
         <div class="flex items-center justify-between gap-2 px-4 py-3 text-white text-sm">
             <span id="lightbox-counter" class="font-medium text-slate-300">1 / 1</span>
             <div class="flex items-center gap-2">
+                <span id="lightbox-zoom-label" class="text-xs text-slate-400 w-12 text-center">100%</span>
                 <button type="button" onclick="zoomLightbox(1/1.5)" aria-label="Alejar" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
                 <button type="button" onclick="zoomLightbox(1.5)" aria-label="Acercar" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
                 <button type="button" onclick="resetLightboxZoom()" aria-label="Restablecer zoom" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-expand"></i></button>
-                <button type="button" onclick="closeModal('lightbox-modal')" class="ml-1 px-3 h-9 rounded-full bg-white/10 hover:bg-white/20 font-semibold flex items-center gap-1 transition"><i class="fa-solid fa-xmark"></i> Cerrar</button>
             </div>
         </div>
         <div id="lightbox-stage" class="relative flex-1 min-h-0 overflow-hidden flex items-center justify-center select-none" style="touch-action: none;">
@@ -426,7 +423,7 @@
         </div>
         <div class="flex items-center justify-center gap-4 px-4 pt-3 text-white" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
             <button type="button" id="lightbox-prev-btn" onclick="prevLightboxImage()" aria-label="Anterior" class="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-chevron-left"></i></button>
-            <span id="lightbox-zoom-label" class="text-xs text-slate-400 w-14 text-center">100%</span>
+            <button type="button" onclick="closeModal('lightbox-modal')" class="px-6 h-12 rounded-full bg-white/15 hover:bg-white/25 font-semibold flex items-center gap-2 transition"><i class="fa-solid fa-xmark"></i> Cerrar</button>
             <button type="button" id="lightbox-next-btn" onclick="nextLightboxImage()" aria-label="Siguiente" class="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </div>
@@ -437,10 +434,12 @@
             <span class="font-semibold text-sm flex items-center gap-2"><i class="fa-solid fa-file-pdf text-rose-400"></i> Vista previa del PDF</span>
             <div class="flex items-center gap-2">
                 <button type="button" onclick="openPdfTab(pdfCurrent)" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-semibold rounded-xl transition"><i class="fa-solid fa-up-right-from-square me-1"></i> Abrir aparte</button>
-                <button type="button" onclick="closePdf()" aria-label="Cerrar" class="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
         </div>
         <div id="pdf-pages" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar"></div>
+        <div class="px-4 pt-3 flex justify-center text-white" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+            <button type="button" onclick="closePdf()" class="px-8 h-12 rounded-full bg-white/15 hover:bg-white/25 font-semibold flex items-center gap-2 transition"><i class="fa-solid fa-xmark"></i> Cerrar</button>
+        </div>
     </div>
 
     <div id="config-modal" onclick="handleBackdropClick(event, 'config-modal')" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -597,10 +596,12 @@
         async function loadPatientsFromSupabase() {
             setLoading(true);
             if (!patients.length) refreshCurrentView();
-            try { await _loadPatientsFromSupabase(); } finally { setLoading(false); refreshCurrentView(); }
+            window.__fromCache = false;
+            try { await _loadPatientsFromSupabase(); if (supabaseClient && !window.__fromCache) { cacheSnapshot(); syncOfflineImages(); } } finally { setLoading(false); refreshCurrentView(); }
         }
         async function _loadPatientsFromSupabase() {
             if (!supabaseClient) return;
+            if (!navigator.onLine && await loadFromCache()) return;
 
             try {
                 const { data: pts, error: errPts } = await supabaseClient
@@ -640,7 +641,9 @@
                 refreshCurrentView();
                 updateBadges();
             } catch(err) {
-                console.error(err); supabaseClient = null; window.__sbFail = true; updateLight(); document.getElementById('connection-status').innerText = 'Modo local (error de conexión)'; toast('No se pudo conectar a Supabase; se usa el modo local.', true);
+                console.error(err);
+            if (await loadFromCache()) { toast('Sin conexión con Supabase: se muestran los datos guardados en este dispositivo.', true); return; }
+            supabaseClient = null; window.__sbFail = true; updateLight(); document.getElementById('connection-status').innerText = 'Modo local (error de conexión)'; toast('No se pudo conectar a Supabase; se usa el modo local.', true);
                 loadLocalData();
                 refreshCurrentView();
                 updateBadges();
@@ -726,6 +729,7 @@
         }
 
         function refreshCurrentView() {
+            scheduleCache();
             if (!document.getElementById('view-patients').classList.contains('hidden')) {
                 renderPatients();
             } else if (!document.getElementById('view-patient-detail').classList.contains('hidden')) {
@@ -1261,7 +1265,7 @@
 
                                 ${r.notes ? `<p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-line">${esc(r.notes)}</p>` : ''}
 
-                                ${r.imagesLoaded === false ? `<div class="pt-1"><div class="flex items-center gap-2 text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Cargando archivos adjuntos…</div><div class="flex gap-2 mt-2"><div class="w-28 h-28 rounded-xl bg-slate-200 animate-pulse"></div><div class="w-28 h-28 rounded-xl bg-slate-100 animate-pulse"></div></div></div>` : r.imagesLoaded === 'error' ? `<div class="pt-1 text-xs text-rose-500 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> No se pudieron cargar los adjuntos. <button type="button" onclick="retryImages()" class="underline font-semibold">Reintentar</button></div>` : imgs.length > 0 ? `
+                                ${r.imagesLoaded === false ? `<div class="pt-1"><div class="flex items-center gap-2 text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> Cargando archivos adjuntos…</div><div class="flex gap-2 mt-2"><div class="w-28 h-28 rounded-xl bg-slate-200 animate-pulse"></div><div class="w-28 h-28 rounded-xl bg-slate-100 animate-pulse"></div></div></div>` : r.imagesLoaded === 'offline' ? `<div class="pt-1 text-xs text-slate-400 flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-down"></i> Adjuntos no descargados en este dispositivo.</div>` : r.imagesLoaded === 'error' ? `<div class="pt-1 text-xs text-rose-500 flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation"></i> No se pudieron cargar los adjuntos. <button type="button" onclick="retryImages()" class="underline font-semibold">Reintentar</button></div>` : imgs.length > 0 ? `
                                     <div>
                                         <div class="flex justify-between items-center mb-1.5">
                                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Archivos adjuntos (${imgs.length})</p>
@@ -1737,6 +1741,94 @@
             renderTrash();
         }
 
+        // --- MODO FUERA DE LÍNEA (IndexedDB) ---
+        const idb = {
+            db: null,
+            open() {
+                return this.db ? Promise.resolve(this.db) : new Promise((res, rej) => {
+                    const r = indexedDB.open('medhistorial', 1);
+                    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+                    r.onsuccess = () => { this.db = r.result; res(r.result); };
+                    r.onerror = () => rej(r.error);
+                });
+            },
+            async get(k) { const db = await this.open(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+            async keys() { const db = await this.open(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').getAllKeys(); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+            async set(k, v) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+        };
+        const imgSig = {};
+        let cacheTimer = null, syncing = false;
+        function scheduleCache() { clearTimeout(cacheTimer); cacheTimer = setTimeout(cacheSnapshot, 1500); }
+        async function cacheSnapshot() {
+            if (!supabaseClient || window.__fromCache || !navigator.onLine) return;
+            try {
+                const slim = patients.map(p => ({ ...p, diseases: (p.diseases || []).map(d => ({ ...d, records: (d.records || []).map(r => ({ ...r, images: [], imagesLoaded: false })) })) }));
+                await idb.set('snapshot', { patients: slim, trash, savedAt: Date.now() });
+                for (const p of patients) for (const d of (p.diseases || [])) for (const r of (d.records || [])) {
+                    if (r.imagesLoaded !== true) continue;
+                    const sig = r.images.length + ':' + (r.images[0] || '').length + ':' + (r.images[r.images.length - 1] || '').length;
+                    if (imgSig[r.id] !== sig) { await idb.set('img:' + r.id, r.images); imgSig[r.id] = sig; }
+                }
+            } catch (e) { console.error(e); }
+        }
+        async function loadFromCache() {
+            try {
+                const snap = await idb.get('snapshot');
+                if (!snap) return false;
+                patients = snap.patients || [];
+                trash = snap.trash || [];
+                for (const p of patients) for (const d of (p.diseases || [])) for (const r of (d.records || [])) {
+                    const imgs = await idb.get('img:' + r.id);
+                    if (imgs) { r.images = imgs; r.imagesLoaded = true; } else { r.images = []; r.imagesLoaded = 'offline'; }
+                }
+                window.__fromCache = true;
+                updateLight();
+                refreshCurrentView();
+                return true;
+            } catch (e) { console.error(e); return false; }
+        }
+        async function syncOfflineImages() {
+            if (syncing || !supabaseClient || !navigator.onLine) return;
+            syncing = true;
+            try {
+                const have = new Set(await idb.keys());
+                const todo = patients.flatMap(p => p.diseases || []).filter(d => (d.records || []).some(r => !have.has('img:' + r.id)));
+                let n = 0;
+                for (const d of todo) {
+                    if (!navigator.onLine || !supabaseClient) break;
+                    window.__syncMsg = `Descargando adjuntos para uso sin conexión (${++n}/${todo.length})…`;
+                    updateLight();
+                    const { data, error } = await supabaseClient.from('records').select('id,images').eq('disease_id', d.id);
+                    if (error) throw error;
+                    for (const row of data || []) await idb.set('img:' + row.id, parseImgs(row.images));
+                }
+            } catch (e) { console.error(e); }
+            finally { syncing = false; window.__syncMsg = ''; updateLight(); }
+        }
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
+                    const urls = [location.href, ...performance.getEntriesByType('resource').map(r => r.name)].filter(u => /^https?:/.test(u) && !u.includes('supabase.co'));
+                    if (reg.active) reg.active.postMessage({ type: 'precache', urls });
+                }).catch(e => console.warn('Service worker no disponible:', e));
+            });
+        }
+
+        // --- SIN CONEXIÓN ---
+        function updateOnline() {
+            const b = document.getElementById('offline-banner');
+            if (b) b.classList.toggle('hidden', navigator.onLine);
+            const bt = document.getElementById('offline-text');
+            if (bt) bt.textContent = supabaseClient ? 'Sin conexión · modo fuera de línea (solo lectura)' : 'Sin conexión a internet';
+            updateLight();
+        }
+        window.addEventListener('offline', updateOnline);
+        window.addEventListener('online', () => {
+            updateOnline();
+            if (supabaseClient) { toast('Conexión restablecida. Sincronizando…'); loadPatientsFromSupabase(); }
+        });
+        document.addEventListener('DOMContentLoaded', updateOnline);
+
         // --- FORMATO RUT ---
         function formatRut(v) {
             const raw = String(v || '').replace(/[.\-\s]/g, '');
@@ -1753,13 +1845,16 @@
             if (!d) return;
             let c = 'bg-slate-400', t = 'Modo local';
             if (!supabaseClient) { if (window.__sbFail) { c = 'bg-rose-500'; t = 'Sin conexión con Supabase'; } }
+            else if (window.__fromCache) { c = 'bg-orange-400'; t = 'Modo fuera de línea: datos guardados en este dispositivo'; }
+            else if (!navigator.onLine) { c = 'bg-rose-500'; t = 'Sin conexión a internet'; }
             else if (window.__loading) { c = 'bg-amber-400 animate-pulse'; t = 'Sincronizando con Supabase…'; }
+            else if (window.__syncMsg) { c = 'bg-sky-400 animate-pulse'; t = window.__syncMsg; }
             else if (window.__sbErr) { c = 'bg-rose-500'; t = window.__sbErr; }
             else { c = 'bg-emerald-400'; t = 'Conectado a Supabase'; }
             d.className = 'w-2.5 h-2.5 rounded-full ring-2 ring-white/30 transition-colors ' + c;
             d.title = t;
             const st = document.getElementById('connection-status');
-            if (st && supabaseClient) st.innerText = window.__loading ? 'Sincronizando con Supabase…' : (window.__sbErr ? 'Error con Supabase (ver luz)' : 'Conectado a Supabase');
+            if (st && supabaseClient) st.innerText = window.__fromCache ? 'Modo fuera de línea' : !navigator.onLine ? 'Sin conexión a internet' : window.__loading ? 'Sincronizando con Supabase…' : window.__syncMsg ? 'Descargando para uso sin conexión…' : (window.__sbErr ? 'Error con Supabase (ver luz)' : 'Conectado a Supabase');
         }
         const isPdf = u => String(u || '').startsWith('data:application/pdf');
         function readPdf(file) {
@@ -1886,7 +1981,10 @@
             updateLight();
         }
         document.addEventListener('submit', e => {
-            if (supabaseClient && ['patient-form', 'disease-form', 'record-form'].includes(e.target.id)) setLoading(true, 'Guardando…');
+            if (supabaseClient && ['patient-form', 'disease-form', 'record-form'].includes(e.target.id)) {
+                if (!navigator.onLine) { e.preventDefault(); e.stopImmediatePropagation(); toast('Sin conexión: no se puede guardar. Intente cuando vuelva internet.', true); return; }
+                setLoading(true, 'Guardando…');
+            }
         }, true);
 
         // --- RESPALDO ---
