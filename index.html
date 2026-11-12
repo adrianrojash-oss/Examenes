@@ -41,6 +41,13 @@
     @keyframes slide { 0% { margin-left: -33%; } 100% { margin-left: 100%; } }
         .load-slide { animation: slide 1.1s linear infinite; }
     </style>
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="MedHistorial">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-180.png">
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
 
@@ -449,9 +456,11 @@
             </h3>
             <p class="text-xs text-slate-500 mb-4">Ingresa las credenciales de tu proyecto de Supabase (Project URL y anon key).</p>
             <div class="flex flex-wrap gap-2 mb-4 pb-4 border-b border-slate-100">
+                <button type="button" id="install-btn" onclick="installApp()" class="hidden px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition"><i class="fa-solid fa-mobile-screen-button me-1"></i> Instalar app</button>
                 <button type="button" onclick="exportBackup()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"><i class="fa-solid fa-download me-1"></i> Exportar respaldo</button>
                 <button type="button" onclick="document.getElementById('backup-file').click()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition"><i class="fa-solid fa-upload me-1"></i> Importar respaldo</button>
                 <input type="file" id="backup-file" accept="application/json,.json" class="hidden" onchange="importBackup(event)">
+                <p class="w-full text-[11px] text-slate-400">Para instalar la app: en Android o Chrome usa el botón «Instalar app». En iPhone, abre esta página en Safari y elige Compartir → «Agregar a pantalla de inicio».</p>
             </div>
             
             <form onsubmit="saveSupabaseConfig(event)" class="space-y-4">
@@ -1808,7 +1817,7 @@
         if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
-                    const urls = [location.href, ...performance.getEntriesByType('resource').map(r => r.name)].filter(u => /^https?:/.test(u) && !u.includes('supabase.co'));
+                    const urls = [location.href, ...['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'].map(x => new URL(x, location.href).href), ...performance.getEntriesByType('resource').map(r => r.name)].filter(u => /^https?:/.test(u) && !u.includes('supabase.co'));
                     if (reg.active) reg.active.postMessage({ type: 'precache', urls });
                 }).catch(e => console.warn('Service worker no disponible:', e));
             });
@@ -1828,6 +1837,26 @@
             if (supabaseClient) { toast('Conexión restablecida. Sincronizando…'); loadPatientsFromSupabase(); }
         });
         document.addEventListener('DOMContentLoaded', updateOnline);
+
+        // --- INSTALAR COMO APP ---
+        let installEvt = null;
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            installEvt = e;
+            document.getElementById('install-btn')?.classList.remove('hidden');
+        });
+        window.addEventListener('appinstalled', () => {
+            installEvt = null;
+            document.getElementById('install-btn')?.classList.add('hidden');
+            toast('App instalada.');
+        });
+        async function installApp() {
+            if (!installEvt) return;
+            installEvt.prompt();
+            await installEvt.userChoice;
+            installEvt = null;
+            document.getElementById('install-btn')?.classList.add('hidden');
+        }
 
         // --- FORMATO RUT ---
         function formatRut(v) {
